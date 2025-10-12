@@ -29,7 +29,6 @@ private:
     void hideAllScreens();
     
     // 显示特定屏幕
-    void showNewsScreen();
     void showMaoSelectScreen();
     void showToxicSoulScreen();
     void showIcibaScreen();

@@ -1,6 +1,7 @@
 # ESP32DesktopInfoBoard
+# ESP32桌面信息板
 
-ESP32桌面信息板是一个基于ESP32微控制器的多功能信息显示系统，可以实时展示新闻、名言警句等信息，并支持自动换屏、光线感应调节亮度和Web配置等功能。
+ESP32桌面信息板是一个基于ESP32微控制器的多功能信息显示系统，可以实时展示名言警句、金山词霸每日一句、国际空间站宇航员信息等内容，并支持自动换屏、光线感应调节亮度和Web配置等功能。
 
 ## 项目概述
 
@@ -34,9 +35,6 @@ src/
 │   ├── screen_manager.h    # 屏幕管理器接口
 │   ├── time_manager.cpp    # 时间管理器实现
 │   └── time_manager.h      # 时间管理器接口
-├── model/
-│   ├── astronaut_data.h    # 宇航员数据模型
-│   └── news_data.h         # 新闻数据模型
 ├── network/
 │   ├── net_http.cpp        # HTTP网络请求实现
 │   ├── net_http.h          # HTTP网络请求接口
@@ -47,9 +45,10 @@ src/
 │   ├── display_manager.h   # 显示管理器接口
 │   ├── init_ui.cpp         # UI初始化
 │   └── init_ui.h           # UI初始化接口
-├── includes.h              # 通用头文件包含
-├── maoselect.h             # 毛泽东选集内容
-└── toxicsoul.h             # 心灵鸡汤内容
+├── content/
+│   ├── maoselect.h         # 毛泽东选集内容
+│   └── toxicsoul.h         # 心灵鸡汤内容
+└── includes.h              # 通用头文件包含
 ```
 
 ## 文件及函数功能描述
@@ -150,7 +149,7 @@ src/
 - `DataManager::checkAndUpdateAllCaches()`: 检查并更新所有需要的缓存数据
 - `DataManager::checkAndUpdateCache()`: 检查并更新特定类型的数据缓存
 - `DataManager::forceRefreshAllData()`: 强制刷新所有数据
-- `DataManager::fetchNewsData()/fetchICIBAData()/fetchAstronautsData()`: 从服务器获取各类数据
+- `DataManager::fetchICIBAData()/fetchAstronautsData()`: 从服务器获取各类数据
 - `DataManager::initFileSystem()`: 初始化文件系统
 - `DataManager::saveCacheData()`: 保存缓存数据到文件
 - `DataManager::loadCacheData()`: 从文件加载缓存数据
@@ -166,7 +165,7 @@ src/
 - `ScreenManager::switchToScreen()`: 直接切换到指定屏幕
 - `ScreenManager::getCurrentScreen()`: 获取当前屏幕状态
 - `ScreenManager::refreshCurrentScreenData()`: 刷新当前屏幕数据
-- `ScreenManager::showNewsScreen()/showMaoSelectScreen()/showToxicSoulScreen()/showIcibaScreen()/showAstronautsScreen()`: 显示各类屏幕
+- `ScreenManager::showMaoSelectScreen()/showToxicSoulScreen()/showIcibaScreen()/showAstronautsScreen()`: 显示各类屏幕
 - `ScreenManager::hideAllScreens()`: 隐藏所有屏幕元素
 - `ScreenManager::setConfigIconStatus()`: 设置配置模式图标状态
 
@@ -210,60 +209,36 @@ src/
 **功能**: 管理各种数据的显示逻辑。
 
 **主要函数**: 
-- `displayNewsDataFromFile()`: 从文件读取JSON数据并显示新闻信息
 - `displayIcibaDataFromFile()`: 从文件读取JSON数据并显示金山词霸每日信息
 - `displayAstronautsDataFromFile()`: 从文件读取JSON数据并显示宇航员信息
 - `initDisplayManager()`: 初始化显示管理器
 - `testDisplayImageFromUrl()`: 测试从URL显示图片的功能
 
-#### ui/image_downloader.h/cpp
-
-**功能**: 负责图片的下载、保存和显示。
-
-**主要函数**: 
-- `downloadImageFromUrl()`: 从URL下载图片并保存到SPIFFS
-- `displayJpegFromFile()`: 在TFT屏幕上显示SPIFFS中的JPEG图片
-- `displayImageFromUrl()`: 从URL下载图片并直接在TFT上显示
-- `createLvImageFromUrl()`: 创建LVGL图片对象并显示从URL下载的图片
-
-### 数据模型
-
-#### model/news_data.h
-
-**功能**: 定义新闻数据结构。
-
-**主要结构**: 
-- `NewsItem`: 新闻数据模型
-
 ## 主要功能
 
-### 1. 新闻信息展示
-
-显示最新的新闻资讯，支持定期更新。新闻数据通过API获取并缓存。
-
-### 3. 名言警句展示
+### 1. 名言警句展示
 
 轮流展示毛泽东选集和心灵鸡汤内容，为用户提供正能量和思考。
 
-### 4. 金山词霸每日一句
+### 2. 金山词霸每日一句
 
 显示金山词霸的每日一句，帮助用户学习英语。
 
-### 5. 国际空间站宇航员信息
+### 3. 国际空间站宇航员信息
 
 显示当前在国际空间站上的宇航员信息。
 
-### 6. ButtonManager功能
+### 4. ButtonManager功能
 
 - 短按：切换显示内容
 - 双击：开启/关闭自动换屏功能
 - 长按：进入Web配置模式
 
-### 7. 自动调节亮度
+### 5. 自动调节亮度
 
 基于光线传感器的读数，自动调节屏幕亮度，以适应不同的环境光线条件。
 
-### 8. Web配置功能
+### 6. Web配置功能
 
 支持通过Web界面配置WiFi信息、城市代码等参数，无需重新编译上传代码。
 
@@ -295,17 +270,6 @@ src/
 
 注意：不再需要直接修改config.h文件中的WiFi、API密钥等配置，这些配置现在由ConfigManager类统一管理。
 
-## 环境要求
-
-- Arduino IDE（推荐使用最新版本）
-- ESP32开发板支持包
-- LVGL库（用于图形界面）
-- ArduinoJSON库（用于JSON数据处理）
-- WiFi库（用于网络连接）
-- HTTPClient库（用于HTTP请求）
-- SPIFFS库（用于文件系统）
-- OneButton库（用于按钮事件处理）
-
 ## 编译和上传
 
 1. 确保已安装所有必要的库。
@@ -325,7 +289,7 @@ src/
 
 - **自动换屏**: 默认启用，每隔30秒自动切换到下一个显示内容。可以通过双击按钮关闭或开启。
 - **自动调节亮度**: 根据环境光线自动调节屏幕亮度。
-- **数据自动更新**: 新闻等数据会定期自动更新（默认每2小时更新一次）。
+- **数据自动更新**: 金山词霸和宇航员数据会定期自动更新（默认每2小时更新一次）。
 
 ## 代码优化亮点
 
@@ -355,23 +319,21 @@ src/
 
 ### 7. 长文本处理优化
 
-所有标签都配置为自动换行模式（LV_LABEL_LONG_WRAP），确保文本过长时不会出现滚动条，保持界面整洁美观。
+系统支持长文本的滚动显示，确保内容过长时能够完整展示，同时保持界面整洁美观。
 
 ## 注意事项
 
-1. 请注意，`src/manager/data_manager.h`文件中仍然包含一个硬编码的新闻API URL和密钥：`https://apis.tianapi.com/bulletin/index?key=38c43566fe20217eab8108f8243b5a89`。建议修改这个文件，移除URL中的硬编码密钥，改为使用ConfigManager中管理的API密钥。
+1. 请确保通过Web配置界面或data/config.json文件设置有效的API密钥，否则可能无法获取数据。系统默认使用"myapikey"作为占位符，需要替换为真实有效的API密钥。
 
-2. 请确保通过Web配置界面或data/config.json文件设置有效的API密钥，否则可能无法获取新闻等数据。系统默认使用"myapikey"作为占位符，需要替换为真实有效的API密钥。
+2. 在连接不稳定的网络环境下，数据更新可能会失败。
 
-3. 在连接不稳定的网络环境下，数据更新可能会失败。
+3. 长时间运行可能会导致内存泄漏，建议定期重启设备。
 
-4. 长时间运行可能会导致内存泄漏，建议定期重启设备。
+4. 在Web配置模式下，系统会退出正常显示模式，完成配置后需要手动退出。
 
-5. 在Web配置模式下，系统会退出正常显示模式，完成配置后需要手动退出。
+5. 首次启动时，由于需要同步时间和获取数据，可能需要较长时间才能显示完整信息。
 
-6. 首次启动时，由于需要同步时间和获取数据，可能需要较长时间才能显示完整信息。
-
-7. 系统默认WiFi配置为SSID: "Mywifi", 密码: "12345678"，请务必通过Web配置界面或data/config.json文件修改为您自己的WiFi信息。
+6. 系统默认WiFi配置为SSID: "Mywifi", 密码: "12345678"，请务必通过Web配置界面或data/config.json文件修改为您自己的WiFi信息。
 
 ## 未来改进方向
 

@@ -7,16 +7,16 @@
 extern lv_font_t lvgl_font_digital_24;
 extern lv_font_t lvgl_font_digital_48;
 // LVGL对象定义
-lv_obj_t* news_label = nullptr;
 lv_obj_t* mao_select_label = nullptr;
 lv_obj_t* toxic_soul_label = nullptr;
 lv_obj_t* iciba_label = nullptr;
 lv_obj_t* astronauts_label = nullptr;
 
 // 从config.h中获取屏幕尺寸，不再重复定义
-// 缓冲区设置
+// 缓冲区设置 - 使用双缓冲区以提高显示性能
 static lv_disp_draw_buf_t draw_buf;
 static lv_color_t buf[screenWidth * 10];
+static lv_color_t buf2[screenHeight * 10];
 
 // TFT对象
 TFT_eSPI tft = TFT_eSPI(screenWidth, screenHeight);
@@ -44,8 +44,8 @@ void initDisplayDriver() {
   // 初始化LVGL
   lv_init();
 
-  // 配置显示缓冲区
-  lv_disp_draw_buf_init(&draw_buf, buf, NULL, screenWidth * 10);
+  // 配置显示缓冲区 - 使用双缓冲区
+  lv_disp_draw_buf_init(&draw_buf, buf, buf2, screenWidth * 10);
 
   // 配置显示驱动
   static lv_disp_drv_t disp_drv;
@@ -65,27 +65,11 @@ void initUI() {
   initDisplayDriver();
 
   // 设置背景颜色
-  lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xFFFFFF), 0);
-
-  // 时间相关标签由TimeManager类创建和管理
-  // 此处不再创建时间标签，避免重复定义
-  // TimeManager的init()方法会在系统初始化时被调用
-
-
-
-  // 创建新闻标签
-  news_label = lv_label_create(lv_scr_act());
-  lv_obj_set_style_text_font(news_label, &lvgl_font_song_16, 0);
-  lv_obj_set_style_text_color(news_label, lv_color_hex(0x000000), 0);
-  lv_obj_set_width(news_label, screenWidth - 20);
-  lv_obj_align(news_label, LV_ALIGN_TOP_MID, 0, 110);
-  lv_label_set_long_mode(news_label, LV_LABEL_LONG_WRAP);
-  lv_obj_add_flag(news_label, LV_OBJ_FLAG_HIDDEN);
-
+  lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x000000), 0);
   // 创建毛泽东选集标签
   mao_select_label = lv_label_create(lv_scr_act());
   lv_obj_set_style_text_font(mao_select_label, &lvgl_font_song_16, 0);
-  lv_obj_set_style_text_color(mao_select_label, lv_color_hex(0x000000), 0);
+  lv_obj_set_style_text_color(mao_select_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
   lv_obj_set_width(mao_select_label, screenWidth - 20);
   lv_obj_align(mao_select_label, LV_ALIGN_TOP_MID, 0, 110);
   lv_label_set_long_mode(mao_select_label, LV_LABEL_LONG_WRAP);
@@ -94,7 +78,7 @@ void initUI() {
   // 创建毒鸡汤标签
   toxic_soul_label = lv_label_create(lv_scr_act());
   lv_obj_set_style_text_font(toxic_soul_label, &lvgl_font_song_16, 0);
-  lv_obj_set_style_text_color(toxic_soul_label, lv_color_hex(0x000000), 0);
+  lv_obj_set_style_text_color(toxic_soul_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
   lv_obj_set_width(toxic_soul_label, screenWidth - 20);
   lv_obj_align(toxic_soul_label, LV_ALIGN_TOP_MID, 0, 110);
   lv_label_set_long_mode(toxic_soul_label, LV_LABEL_LONG_WRAP);
@@ -103,7 +87,7 @@ void initUI() {
   // 创建金山词霸标签
   iciba_label = lv_label_create(lv_scr_act());
   lv_obj_set_style_text_font(iciba_label, &lvgl_font_song_16, 0);
-  lv_obj_set_style_text_color(iciba_label, lv_color_hex(0x000000), 0);
+  lv_obj_set_style_text_color(iciba_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
   lv_obj_set_width(iciba_label, screenWidth - 20);
   lv_obj_align(iciba_label, LV_ALIGN_TOP_MID, 0, 110);
   lv_label_set_long_mode(iciba_label, LV_LABEL_LONG_WRAP);
@@ -112,7 +96,7 @@ void initUI() {
   // 创建宇航员标签
   astronauts_label = lv_label_create(lv_scr_act());
   lv_obj_set_style_text_font(astronauts_label, &lvgl_font_song_16, 0);
-  lv_obj_set_style_text_color(astronauts_label, lv_color_hex(0x000000), 0);
+  lv_obj_set_style_text_color(astronauts_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
   lv_obj_set_width(astronauts_label, screenWidth - 20);
   lv_obj_align(astronauts_label, LV_ALIGN_TOP_MID, 0, 110);
   lv_label_set_long_mode(astronauts_label, LV_LABEL_LONG_WRAP);

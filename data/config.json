@@ -1,9 +1,5 @@
 {
-  "display": {
-    "brightness": 128,
-    "refresh_interval": 60000
-  },
-  "wifi": {
+"wifi": {
     "ssid": "wonder",
     "password": "unclesam"
   },

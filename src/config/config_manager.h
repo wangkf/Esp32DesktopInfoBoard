@@ -34,29 +34,12 @@ public:
     
     // 保存WiFi配置
     bool setWiFiConfig(const String& ssid, const String& password);
-    
-    // 读取API密钥配置
-    String getApiKey();
-    
+
     // 读取NTP时区配置
     int getNTPServerTimezone();
     
-    // 设置API密钥配置
-    bool setApiKey(const String& apiKey);
-    
     // 设置NTP时区配置
     bool setNTPServerTimezone(int timezone);
-    
-    // 读取屏幕亮度配置
-    int getScreenBrightness();
-    
-    // 设置屏幕亮度配置
-    bool setScreenBrightness(int brightness);
-    
-    // 读取硬件引脚配置
-    int getButtonPin();
-    int getLightSensorPin();
-    int getScreenBrightnessPin();
     
     // 检查配置是否已加载
     bool isConfigLoaded();

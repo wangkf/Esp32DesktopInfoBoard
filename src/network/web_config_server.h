@@ -25,11 +25,8 @@ private:
     // 处理主页请求
     void handleRoot();
 
-    // 处理WiFi配置请求
-    void handleWiFiConfig();
-    
-    // 处理系统配置请求（NTP时区和API密钥）
-    void handleSystemConfig();
+    // 处理配置请求（WiFi和时区）
+    void handleConfig();
 
     // 处理JSON文件查看请求
     void handleJsonFile();
@@ -46,11 +43,11 @@ private:
     // 保存WiFi配置
     bool saveWiFiConfig(const String& ssid, const String& password);
     
-    // 读取系统配置（NTP时区和API密钥）
-    void readSystemConfig(String& apiKey, int& timezone);
+    // 读取NTP服务器时区配置
+    void getNTPServerTimezone(int& timezone);
     
-    // 保存系统配置（NTP时区和API密钥）
-    bool saveSystemConfig(const String& apiKey, int timezone);
+    // 保存NTP服务器时区配置
+    bool setNTPServerTimezone(int timezone);
 
     // 获取所有JSON文件列表
     String getJsonFilesList();

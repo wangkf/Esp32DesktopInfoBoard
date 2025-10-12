@@ -7,7 +7,6 @@
 #include <lvgl.h>
 
 // 外部变量声明
-extern lv_obj_t* news_label;
 extern lv_obj_t* iciba_label;
 extern lv_obj_t* astronauts_label;
 
@@ -94,7 +93,7 @@ void createAndInitLabel(lv_obj_t* &label, const char* labelName) {
     }
     label = lv_label_create(lv_scr_act());
     lv_obj_set_style_text_font(label, &lvgl_font_song_16, 0);
-    lv_obj_set_style_text_color(label, lv_color_hex(0x000000), 0); // 默认黑色
+    lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), 0); // 白色文字，适配黑色背景
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, 0);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP); // 设置自动换行
     lv_obj_set_width(label, screenWidth - 40); // 设置标签宽度
@@ -142,106 +141,7 @@ bool readJsonFromFile(const char* fileName, JsonDocument& doc) {
   return true;
 }
 
-/**
- * 显示新闻数据
- */
-void displayNewsDataFromFile() {
-  Serial.println("从文件显示新闻数据");
-  
-  // 确保news_label已创建和初始化
-  createAndInitLabel(news_label, "news_label");
-  
-  JsonDocument doc;
-  if (!readJsonFromFile("/news.json", doc)) {
-    if (news_label && lv_obj_is_valid(news_label)) {
-      lv_label_set_text(news_label, "无法读取新闻数据文件");
-    }
-    return;
-  }
 
-  // 获取更新时间
-  String updateTime = "";
-  bool hasNewsList = false;
-  
-  // 构建新闻显示文本，在第一行右边括号中显示更新时间
-  String newsText = "最新资讯";
-  
-  // 优先检查是否包含result对象（标准格式）
-  if (doc.containsKey("result") && doc["result"].is<JsonObject>()) {
-    JsonObject result = doc["result"].as<JsonObject>();
-    
-    // 从result中获取更新时间
-    if (result.containsKey("last_updated")) {
-      updateTime = result["last_updated"].as<const char*>();
-    }
-    
-    // 更新时间显示
-    if (!updateTime.isEmpty()) {
-      newsText += " (" + updateTime + ")";
-    }
-    newsText += "\n";
-    
-    // 从result中获取newslist
-    if (result.containsKey("newslist") && result["newslist"].is<JsonArray>()) {
-      JsonArray newsList = result["newslist"].as<JsonArray>();
-      hasNewsList = true;
-      
-      for (int i = 0; i < newsList.size() && i < 5; i++) {  // 限制显示最多5条新闻
-        if (newsList[i].containsKey("title") && newsList[i]["title"].is<const char*>()) {
-          newsText += String(i + 1) + ". " + String(newsList[i]["title"].as<const char*>()) + "\n";
-        }
-      }
-    } 
-    // 向后兼容：检查list数组
-    else if (result.containsKey("list") && result["list"].is<JsonArray>()) {
-      JsonArray newsList = result["list"].as<JsonArray>();
-      hasNewsList = true;
-      
-      for (int i = 0; i < newsList.size() && i < 5; i++) {  // 限制显示最多5条新闻
-        if (newsList[i].containsKey("title") && newsList[i]["title"].is<const char*>()) {
-          newsText += String(i + 1) + ". " + String(newsList[i]["title"].as<const char*>()) + "\n";
-        }
-      }
-    }
-    
-    if (!hasNewsList) {
-      newsText += "暂无新闻数据";
-    }
-  }
-  // 否则直接检查根节点（天聚数行API原始格式）
-  else {
-    // 从根节点获取更新时间
-    if (doc.containsKey("last_updated")) {
-      updateTime = doc["last_updated"].as<const char*>();
-    }
-    
-    // 更新时间显示
-    if (!updateTime.isEmpty()) {
-      newsText += " (" + updateTime + ")";
-    }
-    newsText += "\n";
-    
-    // 从根节点获取newslist
-    if (doc.containsKey("newslist") && doc["newslist"].is<JsonArray>()) {
-      JsonArray newsList = doc["newslist"].as<JsonArray>();
-      
-      for (int i = 0; i < newsList.size() && i < 5; i++) {  // 限制显示最多5条新闻
-        if (newsList[i].containsKey("title") && newsList[i]["title"].is<const char*>()) {
-          newsText += String(i + 1) + ". " + String(newsList[i]["title"].as<const char*>()) + "\n";
-        }
-      }
-    } else {
-      // 没有找到有效的新闻列表
-      newsText += "暂无新闻数据";
-    }
-  }
-  
-  // 更新新闻标签
-  if (news_label && lv_obj_is_valid(news_label)) {
-    lv_label_set_text(news_label, newsText.c_str());
-    lv_obj_move_foreground(news_label); // 确保标签显示在最上层
-  }
-}
 
 /**
  * 显示金山词霸每日信息
@@ -253,6 +153,7 @@ void displayIcibaDataFromFile() {
   if (!readJsonFromFile("/iciba.json", doc)) {
     if (iciba_label && lv_obj_is_valid(iciba_label)) {
       lv_label_set_text(iciba_label, "无法读取金山词霸数据文件");
+      lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
     }
     return;
   }
@@ -312,6 +213,7 @@ void displayIcibaDataFromFile() {
   // 更新金山词霸标签
   if (iciba_label && lv_obj_is_valid(iciba_label)) {
     lv_label_set_text(iciba_label, icibaText.c_str());
+    lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
   }
   
   // 在词霸文字下方显示data目录下的iciba.png图片作为装饰
@@ -349,56 +251,98 @@ void displayAstronautsDataFromFile() {
   if (!readJsonFromFile("/astronauts.json", doc)) {
     if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
       lv_label_set_text(astronauts_label, "无法读取宇航员数据文件");
+      lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
     }
     return;
   }
 
-  
-  JsonObject result = doc["people"].as<JsonObject>();
-  
-  // 获取更新时间
-  String updateTime = "";
-  if (result.containsKey("last_updated")) {
-    updateTime = result["last_updated"].as<const char*>();
+  // 先检查doc是否包含"people"
+  if (!doc.containsKey("people")) {
+    if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
+      lv_label_set_text(astronauts_label, "JSON格式错误：缺少people字段");
+      lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
+    }
+    return;
   }
   
-  // 构建宇航员显示文本，在第一行右边括号中显示更新时间
-  String astronautsText = "太空宇航员总数:" + String(result["number"].as<int>());
-  if (!updateTime.isEmpty()) {
-    astronautsText += " (" + updateTime + ")";
-  }
-  astronautsText += "\n";
-  
-  // 按航天器分组显示
-  std::map<String, std::vector<String>> astronautsByCraft;
-  
-  if (result.containsKey("people") && result["people"].is<JsonArray>()) {
-    JsonArray astronauts = result["people"].as<JsonArray>();
+  // 检查"people"是否为JsonArray
+  if (doc["people"].is<JsonArray>()) {
+    JsonArray peopleArray = doc["people"].as<JsonArray>();
     
-    for (JsonVariant astronaut : astronauts) {
+    // 构建宇航员显示文本
+    String astronautsText = "太空宇航员列表\n\n";
+    
+    // 遍历宇航员数组
+    for (JsonVariant astronaut : peopleArray) {
       if (astronaut.containsKey("name") && astronaut.containsKey("craft")) {
         String name = astronaut["name"].as<String>();
         String craft = astronaut["craft"].as<String>();
-        astronautsByCraft[craft].push_back(name);
+        astronautsText += name + " - " + craft + "\n";
       }
     }
-  }
-  
-  // 按照用户要求的格式显示：按航天器分组，每组内一行一个姓名
-  for (auto& pair : astronautsByCraft) {
-    astronautsText += pair.first + ":\n";
     
-    // 每个宇航员姓名一行显示
-    for (size_t i = 0; i < pair.second.size(); i++) {
-      astronautsText += "- " + pair.second[i] + "\n";
+    // 更新宇航员标签
+    if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
+      lv_label_set_text(astronauts_label, astronautsText.c_str());
+      lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
+      lv_obj_move_foreground(astronauts_label); // 确保标签显示在最上层
+    }
+  }
+  // 如果不是数组，检查是否为对象
+  else if (doc["people"].is<JsonObject>()) {
+    JsonObject result = doc["people"].as<JsonObject>();
+    
+    // 获取更新时间
+    String updateTime = "";
+    if (result.containsKey("last_updated")) {
+      updateTime = result["last_updated"].as<const char*>();
+    }
+    
+    // 构建宇航员显示文本，在第一行右边括号中显示更新时间
+    String astronautsText = "太空宇航员总数:" + String(result["number"].as<int>());
+    if (!updateTime.isEmpty()) {
+      astronautsText += " (" + updateTime + ")";
     }
     astronautsText += "\n";
-  }
+    
+    // 按航天器分组显示
+    std::map<String, std::vector<String>> astronautsByCraft;
+    
+    if (result.containsKey("people") && result["people"].is<JsonArray>()) {
+      JsonArray astronauts = result["people"].as<JsonArray>();
+      
+      for (JsonVariant astronaut : astronauts) {
+        if (astronaut.containsKey("name") && astronaut.containsKey("craft")) {
+          String name = astronaut["name"].as<String>();
+          String craft = astronaut["craft"].as<String>();
+          astronautsByCraft[craft].push_back(name);
+        }
+      }
+    }
+    
+    // 按照用户要求的格式显示：按航天器分组，每组内一行一个姓名
+    for (auto& pair : astronautsByCraft) {
+      astronautsText += pair.first + ":\n";
+      
+      // 每个宇航员姓名一行显示
+      for (size_t i = 0; i < pair.second.size(); i++) {
+        astronautsText += "- " + pair.second[i] + "\n";
+      }
+      astronautsText += "\n";
+    }
 
-  // 更新宇航员标签
-  if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
-    lv_label_set_text(astronauts_label, astronautsText.c_str());
-    lv_obj_move_foreground(astronauts_label); // 确保标签显示在最上层
+    // 更新宇航员标签
+    if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
+      lv_label_set_text(astronauts_label, astronautsText.c_str());
+      lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
+      lv_obj_move_foreground(astronauts_label); // 确保标签显示在最上层
+    }
+  }
+  else {
+    if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
+      lv_label_set_text(astronauts_label, "JSON格式错误：people字段格式不正确");
+      lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
+    }
   }
 }
 

@@ -9,7 +9,6 @@ extern lv_obj_t* minute_label;
 extern lv_obj_t* second_label;
 extern lv_obj_t* date_label;
 extern lv_obj_t* weekday_label;
-extern lv_obj_t* news_label;
 extern lv_obj_t* mao_select_label;
 extern lv_obj_t* toxic_soul_label;
 extern lv_obj_t* iciba_label;

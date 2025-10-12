@@ -49,8 +49,7 @@ WebConfigServer* WebConfigServer::getInstance() {
 void WebConfigServer::init() {
     // 注册处理函数
     server.on("/", HTTP_GET, std::bind(&WebConfigServer::handleRoot, this));
-    server.on("/wifi-config", HTTP_POST, std::bind(&WebConfigServer::handleWiFiConfig, this));
-    server.on("/system-config", HTTP_POST, std::bind(&WebConfigServer::handleSystemConfig, this));
+    server.on("/config", HTTP_POST, std::bind(&WebConfigServer::handleConfig, this));    server.on("/restart", HTTP_POST, std::bind(&WebConfigServer::handleRestart, this));
     server.on("/restart", HTTP_POST, std::bind(&WebConfigServer::handleRestart, this));
     server.on("/json-files", HTTP_GET, std::bind(&WebConfigServer::handleJsonFile, this));
     server.on("/json-file", HTTP_GET, std::bind(&WebConfigServer::handleJsonFileContent, this));
@@ -137,12 +136,16 @@ void WebConfigServer::handleRoot() {
     String ssid, password;
     readWiFiConfig(ssid, password);
     
+
+    int timezone;
+    getNTPServerTimezone(timezone);
+    
     String html = "";
     html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>ESP32信息板配置</title>",
            "<style>body{font-family:Arial,sans-serif;margin:20px;}",
            "h1{color:#333;}",
            "form{max-width:400px;margin:20px 0;}",
-           "input[type=text],input[type=password]{width:100%;padding:10px;margin:8px 0;display:inline-block;",
+           "input[type=text],input[type=password],input[type=number]{width:100%;padding:10px;margin:8px 0;display:inline-block;",
            "border:1px solid #ccc;border-radius:4px;box-sizing:border-box;}",
            "input[type=submit]{background-color:#4CAF50;color:white;padding:14px 20px;margin:8px 0;border:none;",
            "border-radius:4px;cursor:pointer;}",
@@ -150,22 +153,12 @@ void WebConfigServer::handleRoot() {
            "a{color:#0066cc;}</style></head><body>";
     
     html += "<h1>ESP32信息板配置</h1>";
-    html += "<h2>WiFi配置</h2>";
-    html += "<form action='/wifi-config' method='post'>";
+    
+    // 合并后的配置表单
+    html += "<form action='/config' method='post'>";
     html += "WiFi名称: <input type='text' name='ssid' value='" + ssid + "'><br>";
     html += "WiFi密码: <input type='password' name='password' value='" + password + "'><br>";
-    html += "<input type='submit' value='保存配置'>";
-    html += "</form>";
-    
-    // 添加系统配置部分
-    String apiKey;
-    int timezone;
-    readSystemConfig(apiKey, timezone);
-    
-    html += "<h2>系统配置</h2>";
-    html += "<form action='/system-config' method='post'>";
-    html += "NTP时区(整数，如北京时间为8): <input type='number' name='timezone' value='" + String(timezone) + "'><br>";
-    html += "API密钥: <input type='text' name='apiKey' value='" + apiKey + "'><br>";
+    html += "NTP时区: <input type='number' name='timezone' value='" + String(timezone) + "'>(整数，如北京时间为8)<br>";
     html += "<input type='submit' value='保存配置'>";
     html += "</form>";
     
@@ -183,16 +176,29 @@ void WebConfigServer::handleRoot() {
 }
 
 /**
- * 处理WiFi配置请求
+ * 处理配置请求（合并后的WiFi和时区配置）
  */
-void WebConfigServer::handleWiFiConfig() {
-    if (server.hasArg("ssid") && server.hasArg("password")) {
+void WebConfigServer::handleConfig() {
+    if (server.hasArg("ssid") && server.hasArg("password") && server.hasArg("timezone")) {
         String ssid = server.arg("ssid");
         String password = server.arg("password");
+        int timezone = server.arg("timezone").toInt();
         
-        if (saveWiFiConfig(ssid, password)) {
-            server.send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>配置保存成功!</h1><p>重启设备后生效。</p><p><a href='/'>返回首页</a></p></body></html>");
+        // 使用ConfigManager保存所有配置
+        ConfigManager* configManager = ConfigManager::getInstance();
+        if (configManager->isConfigLoaded()) {
+            bool wifiSaved = configManager->setWiFiConfig(ssid, password);
+            bool timezoneSaved = configManager->setNTPServerTimezone(timezone);
+            
+            if (wifiSaved && timezoneSaved) {
+                Serial.println("配置保存成功");
+                server.send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>配置保存成功!</h1><p>重启设备后生效。</p><p><a href='/'>返回首页</a></p></body></html>");
+            } else {
+                Serial.println("配置保存失败");
+                server.send(500, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>配置保存失败!</h1><p><a href='/'>返回首页</a></p></body></html>");
+            }
         } else {
+            Serial.println("配置管理器未初始化，无法保存配置");
             server.send(500, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>配置保存失败!</h1><p><a href='/'>返回首页</a></p></body></html>");
         }
     } else {
@@ -401,28 +407,12 @@ String WebConfigServer::readJsonFileContent(const String& fileName) {
     }
 }
 
-/**
- * 处理系统配置请求（NTP时区和API密钥）
- */
-void WebConfigServer::handleSystemConfig() {
-    if (server.hasArg("timezone") && server.hasArg("apiKey")) {
-        String apiKey = server.arg("apiKey");
-        int timezone = server.arg("timezone").toInt();
-        
-        if (saveSystemConfig(apiKey, timezone)) {
-            server.send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>配置保存成功!</h1><p>重启设备后生效。</p><p><a href='/'>返回首页</a></p></body></html>");
-        } else {
-            server.send(500, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>配置保存失败!</h1><p><a href='/'>返回首页</a></p></body></html>");
-        }
-    } else {
-        server.send(400, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>参数错误!</h1><p><a href='/'>返回首页</a></p></body></html>");
-    }
-}
+
 
 /**
- * 读取系统配置（NTP时区和API密钥）
+ * 读取系统配置（NTP时区）
  */
-void WebConfigServer::readSystemConfig(String& apiKey, int& timezone) {
+void WebConfigServer::getNTPServerTimezone(int& timezone) {
     // 使用ConfigManager获取系统配置
     ConfigManager* configManager = ConfigManager::getInstance();
     if (configManager->isConfigLoaded()) {
@@ -437,15 +427,14 @@ void WebConfigServer::readSystemConfig(String& apiKey, int& timezone) {
 /**
  * 保存系统配置（NTP时区和API密钥）
  */
-bool WebConfigServer::saveSystemConfig(const String& apiKey, int timezone) {
+bool WebConfigServer::setNTPServerTimezone(int timezone) {
     // 使用ConfigManager保存系统配置
     ConfigManager* configManager = ConfigManager::getInstance();
     if (configManager->isConfigLoaded()) {
         // 使用ConfigManager提供的方法来保存配置
-        bool apiKeySaved = configManager->setApiKey(apiKey);
         bool timezoneSaved = configManager->setNTPServerTimezone(timezone);
         
-        if (apiKeySaved && timezoneSaved) {
+        if (timezoneSaved) {
             Serial.println("系统配置保存成功");
             return true;
         } else {

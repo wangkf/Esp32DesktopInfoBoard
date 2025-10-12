@@ -63,7 +63,7 @@ void TimeManager::init() {
     if (!hour_minute_label) {
         hour_minute_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_text_font(hour_minute_label, &lvgl_font_digital_48, 0); // 48像素数字字体
-        lv_obj_set_style_text_color(hour_minute_label, lv_color_hex(0x006400), 0); // 深绿色
+        lv_obj_set_style_text_color(hour_minute_label, lv_color_hex(0x00FF00), 0); // 深绿色
         lv_obj_align(hour_minute_label, LV_ALIGN_TOP_LEFT, 2, 20); // 位置：左上角对齐，x偏移5，y偏移30
         lv_label_set_text(hour_minute_label, "--:--");
         lv_label_set_long_mode(hour_minute_label, LV_LABEL_LONG_WRAP);
@@ -83,7 +83,7 @@ void TimeManager::init() {
     if (!date_label) {
         date_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_text_font(date_label, &lvgl_font_song_16, 0); // 16像素宋体
-        lv_obj_set_style_text_color(date_label, lv_color_hex(0x0000FF), 0); // 蓝色
+        lv_obj_set_style_text_color(date_label, lv_color_hex(0xFFFF00), 0); // 黄色
         lv_obj_align(date_label, LV_ALIGN_TOP_LEFT, 0, 2); // 位置：顶部中间对齐，x偏移0，y偏移2
         lv_obj_set_width(date_label, 120); // 设置足够的宽度确保显示完整
         lv_label_set_text(date_label, "2023年01月01日");
@@ -94,7 +94,7 @@ void TimeManager::init() {
     if (!weekday_label) {
         weekday_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_text_font(weekday_label, &lvgl_font_song_16, 0); // 16像素宋体
-        lv_obj_set_style_text_color(weekday_label, lv_color_hex(0x0000FF), 0); // 蓝色
+        lv_obj_set_style_text_color(weekday_label, lv_color_hex(0xFFFF00), 0); // 蓝色
         lv_obj_align(weekday_label, LV_ALIGN_TOP_LEFT, 120, 2); // 位置：顶部中间对齐，x偏移0，y偏移22
         lv_label_set_text(weekday_label, "星期日");
         lv_label_set_long_mode(weekday_label, LV_LABEL_LONG_WRAP);

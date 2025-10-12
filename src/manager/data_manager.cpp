@@ -17,7 +17,6 @@ DataManager* DataManager::instance = nullptr;
 
 // 定义任务标志
 volatile bool DataManager::shouldUpdateAllData = false;
-volatile bool DataManager::shouldUpdateNews = false;
 volatile bool DataManager::shouldUpdateICIBADaily = false;
 volatile bool DataManager::shouldUpdateAstronauts = false;
 
@@ -26,19 +25,14 @@ volatile bool DataManager::shouldUpdateAstronauts = false;
  */
 DataManager::DataManager() {
     // 初始化缓存更新时间
-    lastNewsUpdateTime = 0;
-    lastAstronautsUpdateTime = 0;
-    lastIcibaUpdateTime = 0;
     lastIcibaUpdateDate = 0;
     lastAstronautsUpdateDate = 0;
     
     // 初始化强制刷新标志
-    forceNewsRefresh = false;
     forceICIBARefresh = false;
     forceAstronautsRefresh = false;
     
     // 初始化数据缓存
-    newsData = "";
     icibaData = "";
     astronautsData = "";
     
@@ -130,7 +124,6 @@ bool DataManager::checkTimeValidity() {
  * 检查并更新所有需要的缓存数据
  */
 void DataManager::checkAndUpdateAllCaches() {
-    checkAndUpdateCache(NEWS_DATA);
     checkAndUpdateCache(ICIBA_DATA);
     checkAndUpdateCache(ASTRONAUTS_DATA);
 }
@@ -156,20 +149,6 @@ bool DataManager::checkAndUpdateCache(DataType type) {
     unsigned long currentTime = millis();
     
     switch (type) {
-        case NEWS_DATA: {
-            if (forceNewsRefresh || 
-                (isTimeValid && (currentTime - lastNewsUpdateTime >= CACHE_TIME_1HOUR))) {
-                result = fetchData(NEWS_DATA, newsData);
-                if (result) {
-                    lastNewsUpdateTime = currentTime;
-                    forceNewsRefresh = false;
-                    Serial.println("新闻数据更新成功");
-                    saveCacheData();
-                }
-            }
-            break;
-        }
-            
         case ICIBA_DATA: {
             unsigned int currentDate = getCurrentDate();
             if (forceICIBARefresh || 
@@ -177,7 +156,6 @@ bool DataManager::checkAndUpdateCache(DataType type) {
                 result = fetchData(ICIBA_DATA, icibaData);
                 if (result) {
                     lastIcibaUpdateDate = currentDate;
-                    lastIcibaUpdateTime = currentTime;
                     forceICIBARefresh = false;
                     Serial.println("每日一句更新成功");
                     saveCacheData();
@@ -193,7 +171,6 @@ bool DataManager::checkAndUpdateCache(DataType type) {
                 result = fetchData(ASTRONAUTS_DATA, astronautsData);
                 if (result) {
                     lastAstronautsUpdateDate = currentAstroDate;
-                    lastAstronautsUpdateTime = currentTime;
                     forceAstronautsRefresh = false;
                     Serial.println("宇航员数据更新成功");
                     saveCacheData();
@@ -213,7 +190,6 @@ bool DataManager::checkAndUpdateCache(DataType type) {
  * 强制刷新所有数据
  */
 void DataManager::forceRefreshAllData() {
-    forceNewsRefresh = true;
     forceICIBARefresh = true;
     forceAstronautsRefresh = true;
     
@@ -266,7 +242,6 @@ bool DataManager::fetchData(DataType type, String &result) {
     String url = "";
     
     switch (type) {
-        case NEWS_DATA:      url = NEWS_API_URL;      break; // 实现新闻数据获取逻辑 - 根据天聚数行TianAPI文档修改
         case ICIBA_DATA:     url = ICIBA_API_URL;     break;// 实现每日一句数据获取逻辑 
         case ASTRONAUTS_DATA:url = ASTRONAUTS_API_URL;break;// 实现宇航员数据获取逻辑 
         default:
@@ -294,11 +269,6 @@ void DataManager::dataTask(void *pvParameters) {
         if (shouldUpdateAllData) {
             dataManager->checkAndUpdateAllCaches();
             shouldUpdateAllData = false;
-        }
-        
-        if (shouldUpdateNews) {
-            dataManager->checkAndUpdateCache(NEWS_DATA);
-            shouldUpdateNews = false;
         }
         
         if (shouldUpdateICIBADaily) {
@@ -360,10 +330,6 @@ void DataManager::loadCacheData() {
  */
 void DataManager::internalSaveCacheData() {
     // 使用新的saveDataToJsonFile函数重构数据保存逻辑
-    if (!newsData.isEmpty()) {
-        saveDataToJsonFile("/news.json", newsData, false);
-    }
-    
     if (!icibaData.isEmpty()) {
         saveDataToJsonFile("/iciba.json", icibaData, false);
     }
@@ -380,13 +346,6 @@ void DataManager::internalSaveCacheData() {
  */
 void DataManager::internalLoadCacheData() {
     // 从SPIFFS加载缓存数据
-    File newsFile = SPIFFS.open("/news.json", "r");
-    if (newsFile) {
-        newsData = newsFile.readString();
-        newsFile.close();
-        Serial.println("新闻缓存加载成功");
-    }
-    
     File icibaFile = SPIFFS.open("/iciba.json", "r");
     if (icibaFile) {
         icibaData = icibaFile.readString();
@@ -424,8 +383,8 @@ bool DataManager::isTwoHourIntervalOnTheHour() {
  */
 void DataManager::checkAndUpdateOnTheHour() {
     if (isTwoHourIntervalOnTheHour()) {
-        // 在整点时更新数据
-        shouldUpdateNews = true;
+        // 在整点时更新数据 - 新闻功能已移除
+        shouldUpdateAllData = true;
     }
 }
 
@@ -545,13 +504,7 @@ bool DataManager::saveDataToJsonFile(const String& filename, const String& data,
     }
     
     // 针对不同文件类型的特殊验证
-    if (filename.endsWith("news.json")) {
-        // 验证新闻数据是否有效 - 根据天聚数行TianAPI文档修改
-        if (!dataDoc.containsKey("result")) {
-            Serial.println("DataManager: 新闻数据无效，缺少result字段");
-            return false;
-        }
-    } else if (filename.endsWith("iciba.json")) {
+    if (filename.endsWith("iciba.json")) {
         // 验证每日一句数据是否有效
         if (!dataDoc.containsKey("note")) {
             Serial.println("DataManager: 每日一句数据无效，缺少必要字段");

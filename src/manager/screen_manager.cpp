@@ -8,14 +8,13 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 
-// 外部变量声明
-extern bool forceRefreshNews;
 // 定义单例实例
 ScreenManager* ScreenManager::instance = nullptr;
+
 /**
  * 私有构造函数
  */
-ScreenManager::ScreenManager() : currentScreen(NEWS_SCREEN) {
+ScreenManager::ScreenManager() : currentScreen(MAO_SELECT_SCREEN) {
     // 初始化屏幕元素指针
     screen_symbol_label = nullptr;
     screen_title_btn = nullptr;
@@ -45,11 +44,11 @@ void ScreenManager::init() {
 
     // 创建屏幕主题符号标签
     screen_symbol_label = lv_label_create(screen_title_btn);
-    lv_label_set_text(screen_symbol_label, "/uF013"); // 默认显示设置图标
+    lv_label_set_text(screen_symbol_label, "\uF013"); // 默认显示设置图标 - 修正Unicode转义格式
     // 确保使用支持图标的字体
     lv_obj_set_style_text_font(screen_symbol_label, &lvgl_font_song_16, 0);
-    lv_obj_set_style_text_color(screen_symbol_label, lv_color_hex(0x808080), 0); // 默认灰色文字
-    lv_obj_align(screen_symbol_label, LV_ALIGN_LEFT_MID, 220, 0); // 符号在左侧，增加左边距
+    lv_obj_set_style_text_color(screen_symbol_label, lv_color_hex(0x808080), 0); // 符号标签对齐 - 调整左边距确保在可视区域内
+    lv_obj_align(screen_symbol_label, LV_ALIGN_LEFT_MID, 10, 0); // 符号在左侧，左边距10px
 
     // 创建屏幕标题标签
     if (title_label == NULL) {
@@ -65,12 +64,6 @@ void ScreenManager::init() {
  */
 void ScreenManager::hideAllScreens() {
     Serial.println("隐藏所有屏幕元素");
-    
-    // 隐藏新闻标签
-extern lv_obj_t* news_label;
-if (news_label) {
-    lv_obj_add_flag(news_label, LV_OBJ_FLAG_HIDDEN);
-}
     
     // 隐藏毛选标签
 extern lv_obj_t* mao_select_label;
@@ -103,9 +96,6 @@ if (astronauts_label) {
 void ScreenManager::showCurrentScreen() {
     // 根据当前屏幕状态显示相应的屏幕
     switch (currentScreen) {
-        case NEWS_SCREEN:
-            showNewsScreen();
-            break;
         case MAO_SELECT_SCREEN:
             showMaoSelectScreen();
             break;
@@ -118,6 +108,10 @@ void ScreenManager::showCurrentScreen() {
         case ASTRONAUTS_SCREEN:
             showAstronautsScreen();
             break;
+        default:
+            // 如果当前屏幕无效，默认显示毛选屏幕
+            showMaoSelectScreen();
+            break;
     }
 }
 
@@ -127,8 +121,8 @@ void ScreenManager::showCurrentScreen() {
 void ScreenManager::toggleScreen() {
     // 隐藏所有屏幕元素
     hideAllScreens();
-    // 循环切换屏幕状态：新闻 -> 毛选 -> 乌鸡汤 -> 金山词霸 -> 宇航员信息 -> 新闻...
-    currentScreen = static_cast<ScreenState>((currentScreen % 5)+1);
+    // 循环切换屏幕状态：毛选 -> 乌鸡汤 -> 金山词霸 -> 宇航员信息 -> 毛选...
+    currentScreen = static_cast<ScreenState>((currentScreen % 4) + 1);
     
     // 显示当前屏幕
     showCurrentScreen();
@@ -153,10 +147,6 @@ void ScreenManager::switchToScreen(ScreenState screenState) {
 void ScreenManager::refreshCurrentScreenData() {
     // 根据当前屏幕状态刷新数据
     switch (currentScreen) {
-        case NEWS_SCREEN:
-            // 从文件加载并显示数据
-            ::displayNewsDataFromFile();
-            break;
         case MAO_SELECT_SCREEN:
             showRandomMaoSelect();
             break;
@@ -172,63 +162,15 @@ void ScreenManager::refreshCurrentScreenData() {
             ::displayAstronautsDataFromFile();
             // 确保宇航员标签可见
             break;
+        default:
+            break;
     }
 }
 
 /**
  * 显示新闻屏幕
  */
-void ScreenManager::showNewsScreen() {
-    Serial.println("切换到新闻屏幕");
-    
-    // 确保news_label已创建
-    extern lv_obj_t* news_label;
-    if (!news_label || !lv_obj_is_valid(news_label)) {
-        if (news_label) {
-            lv_obj_del(news_label);
-        }
-        news_label = lv_label_create(lv_scr_act());
-        lv_obj_set_style_text_font(news_label, &lvgl_font_song_16, 0);
-        lv_obj_set_style_text_color(news_label, lv_color_hex(0x000000), 0);
-        lv_obj_set_style_text_align(news_label, LV_TEXT_ALIGN_LEFT, 0);
-        lv_obj_set_width(news_label, screenWidth - 20);
-        lv_obj_align(news_label, LV_ALIGN_TOP_MID, 0, 110);
-        lv_label_set_long_mode(news_label, LV_LABEL_LONG_WRAP);
-        
-        // 设置背景和边框效果
-        lv_obj_set_style_bg_color(news_label, lv_color_hex(0xFFFFFF), 0); // 白色背景
-        lv_obj_set_style_bg_opa(news_label, 100, 0); // 设置背景透明度
-        lv_obj_set_style_border_width(news_label, 2, 0); // 边框宽度
-        lv_obj_set_style_border_color(news_label, lv_color_hex(0xCCCCCC), 0); // 灰色边框
-        lv_obj_set_style_radius(news_label, 10, 0); // 圆角
-        lv_obj_set_style_pad_all(news_label, 10, 0); // 内边距
-    }
-    
-    // 显示新闻标签
-    lv_obj_clear_flag(news_label, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_foreground(news_label); // 确保标签显示在最上层
-    
-    // 首先尝试从文件显示新闻数据
-    ::displayNewsDataFromFile();
-    
-    // 如果没有缓存数据或需要强制刷新，则从网络获取数据
-    if (forceRefreshNews || !SPIFFS.exists("/news.json")) {
-        // 获取新闻数据
-        getNews();
-        forceRefreshNews = false;
-    }
-    
-    // 更新屏幕标题和符号
-    if (screen_symbol_label && screen_title_btn && title_label) {
-        // 更新符号
-        lv_label_set_text(screen_symbol_label, "");
-        // 更新标题文本
-        lv_label_set_text(title_label, " 新闻简报");
-        
-        // 更新色块颜色
-        lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x800080), 0); // 紫色
-    }
-}
+
 
 /**
  * 显示主席语录屏幕
@@ -242,7 +184,7 @@ void ScreenManager::showMaoSelectScreen() {
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
         // 更新符号
-        lv_label_set_text(screen_symbol_label, "");
+    lv_label_set_text(screen_symbol_label, "\uF024"); // 主席语录图标
         // 更新标题文本
         lv_label_set_text(title_label, " 毛主席语录");
         
@@ -263,7 +205,7 @@ void ScreenManager::showToxicSoulScreen() {
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
         // 更新符号
-        lv_label_set_text(screen_symbol_label, "");
+    lv_label_set_text(screen_symbol_label, "\uF069"); // 鸡汤图标
         // 更新标题文本
         lv_label_set_text(title_label, " 心灵鸡汤");
         
@@ -290,7 +232,7 @@ if (iciba_label) {
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
         // 更新符号
-        lv_label_set_text(screen_symbol_label, "");
+    lv_label_set_text(screen_symbol_label, "\uF0AC"); // 词典图标
         // 更新标题文本
         lv_label_set_text(title_label, " 每日一句");
         
@@ -310,7 +252,7 @@ extern lv_obj_t* astronauts_label;
 if (!astronauts_label) {
     astronauts_label = lv_label_create(lv_scr_act());
     lv_obj_set_style_text_font(astronauts_label, &lvgl_font_song_16, 0); // 16px字体
-    lv_obj_set_style_text_color(astronauts_label, lv_color_hex(0x000000), 0); // 黑色文字
+    lv_obj_set_style_text_color(astronauts_label, lv_color_hex(0x0000FF), 0); // 蓝色文字以在白色背景上可见
     lv_obj_set_width(astronauts_label, screenWidth - 20); // 宽度为屏幕宽度减20px
     lv_obj_set_height(astronauts_label, screenHeight - 120); // 固定高度，顶部100px，留出20px边距
     lv_obj_align(astronauts_label, LV_ALIGN_TOP_LEFT, 10, 100); // 顶部离屏幕顶部100px
@@ -334,7 +276,7 @@ if (!astronauts_label) {
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
         // 更新符号
-        lv_label_set_text(screen_symbol_label, "");
+    lv_label_set_text(screen_symbol_label, "\uF0C2"); // 宇航员图标
         // 更新标题文本
         lv_label_set_text(title_label, " 太空宇航员");
         
@@ -396,7 +338,7 @@ void ScreenManager::setConfigIconStatus(bool isConfigMode) {
     if (screen_symbol_label) {
         lv_label_set_text(screen_symbol_label, "\uF013"); // 设置图标为设置图标
         if (isConfigMode) {
-            lv_obj_set_style_text_color(screen_symbol_label, lv_color_hex(0x000000), 0); // 黑色文字
+            lv_obj_set_style_text_color(screen_symbol_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在蓝色背景上可见
         } else {
             lv_obj_set_style_text_color(screen_symbol_label, lv_color_hex(0x808080), 0); // 灰色文字
         }

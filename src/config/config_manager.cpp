@@ -53,9 +53,6 @@ bool ConfigManager::init() {
     } else {
         Serial.println("配置文件不存在，使用默认配置");
         // 使用默认配置
-        configDoc["api"]["key"] = "myapikey";
-        configDoc["display"]["brightness"] = 128;
-        configDoc["display"]["refresh_interval"] = 60000;
         configDoc["wifi"]["ssid"] = "Mywifi";
         configDoc["wifi"]["password"] = "12345678";
         configDoc["ntp"]["timezone"] = 8;
@@ -119,20 +116,6 @@ bool ConfigManager::setWiFiConfig(const String& ssid, const String& password) {
     return saveConfigToFile();
 }
 
-// 读取API密钥配置
-String ConfigManager::getApiKey() {
-    if (!configLoaded || !configDoc.containsKey("api")) {
-        return "";
-    }
-    
-    JsonObject apiObj = configDoc["api"];
-    if (apiObj.containsKey("key")) {
-        return apiObj["key"].as<String>();
-    }
-    
-    return "";
-}
-
 // 读取NTP时区配置
 int ConfigManager::getNTPServerTimezone() {
     if (!configLoaded || !configDoc.containsKey("ntp")) {
@@ -147,21 +130,6 @@ int ConfigManager::getNTPServerTimezone() {
     return 8; // 默认东八区
 }
 
-// 设置API密钥配置
-bool ConfigManager::setApiKey(const String& apiKey) {
-    if (!configLoaded) {
-        return false;
-    }
-    
-    if (configDoc.containsKey("api")) {
-        configDoc["api"]["key"] = apiKey;
-    } else {
-        JsonObject apiObj = configDoc.createNestedObject("api");
-        apiObj["key"] = apiKey;
-    }
-    
-    return saveConfigToFile();
-}
 
 // 设置NTP时区配置
 bool ConfigManager::setNTPServerTimezone(int timezone) {
@@ -177,71 +145,6 @@ bool ConfigManager::setNTPServerTimezone(int timezone) {
     }
     
     return saveConfigToFile();
-}
-
-// 读取屏幕亮度配置
-int ConfigManager::getScreenBrightness() {
-    if (!configLoaded || !configDoc.containsKey("display")) {
-        return 128; // 默认亮度
-    }
-    
-    JsonObject displayObj = configDoc["display"];
-    if (displayObj.containsKey("brightness")) {
-        return displayObj["brightness"].as<int>();
-    }
-    
-    return 128; // 默认亮度
-}
-
-// 设置屏幕亮度配置
-bool ConfigManager::setScreenBrightness(int brightness) {
-    if (!configLoaded) {
-        return false;
-    }
-    
-    configDoc["display"]["brightness"] = brightness;
-    
-    return saveConfigToFile();
-}
-
-// 读取硬件引脚配置
-int ConfigManager::getButtonPin() {
-    if (!configLoaded || !configDoc.containsKey("hardware")) {
-        return 18; // 默认引脚
-    }
-    
-    JsonObject hardwareObj = configDoc["hardware"];
-    if (hardwareObj.containsKey("BUTTON_PIN")) {
-        return hardwareObj["BUTTON_PIN"].as<int>();
-    }
-    
-    return 18; // 默认引脚
-}
-
-int ConfigManager::getLightSensorPin() {
-    if (!configLoaded || !configDoc.containsKey("hardware")) {
-        return 35; // 默认引脚
-    }
-    
-    JsonObject hardwareObj = configDoc["hardware"];
-    if (hardwareObj.containsKey("LIGHT_SENSOR_PIN")) {
-        return hardwareObj["LIGHT_SENSOR_PIN"].as<int>();
-    }
-    
-    return 35; // 默认引脚
-}
-
-int ConfigManager::getScreenBrightnessPin() {
-    if (!configLoaded || !configDoc.containsKey("hardware")) {
-        return 22; // 默认引脚
-    }
-    
-    JsonObject hardwareObj = configDoc["hardware"];
-    if (hardwareObj.containsKey("SCREEN_BRIGHTNESS_PIN")) {
-        return hardwareObj["SCREEN_BRIGHTNESS_PIN"].as<int>();
-    }
-    
-    return 22; // 默认引脚
 }
 
 // 检查配置是否已加载

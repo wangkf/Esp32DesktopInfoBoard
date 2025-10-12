@@ -7,7 +7,6 @@
 const char* ntpServer = NTP_SERVER;
 
 // LVGL对象声明
-extern lv_obj_t* news_label;
 extern lv_obj_t* mao_select_label;
 extern lv_obj_t* toxic_soul_label;
 extern lv_obj_t* iciba_label;
@@ -309,6 +308,11 @@ void initSystem() {
   ButtonManager::getInstance()->begin();
   initDisplayManager();
   
+  // 初始化配置管理器（必须在WebConfigServer之前初始化）
+  if (!ConfigManager::getInstance()->init()) {
+    Serial.println("警告：配置管理器初始化失败");
+  }
+  
   // 初始化Web配置服务器
   WebConfigServer::getInstance()->init();
   
@@ -322,9 +326,8 @@ void initSystem() {
   lastScreenChangeTime = 0; // 重置计时器
   Serial.println("系统初始化完成，自动换屏功能已启用");
   
-  // 初始化完成后显示第一个屏幕（新闻屏幕）
-  // 注：已屏蔽天气屏幕
-  ScreenManager::getInstance()->switchToScreen(NEWS_SCREEN);
+  // 初始化完成后显示第一个屏幕（毛主席语录屏幕）
+  ScreenManager::getInstance()->switchToScreen(MAO_SELECT_SCREEN);
 }
 
 // 显示任务函数 - 在CORE_0上运行
@@ -354,6 +357,32 @@ void displayTask(void *pvParameters) {
           Serial.println(WiFi.localIP());
         } else {
           Serial.println("Web配置模式已启动，请连接热点访问192.168.4.1");
+        }
+        
+        // 在屏幕上显示配置模式信息
+        String configInfo = "配置模式已启动\n";
+        if (WiFi.status() == WL_CONNECTED) {
+          configInfo += "IP: " + WiFi.localIP().toString();
+        } else {
+          configInfo += "请连接热点ESP32-InfoBoard\n";
+          configInfo += "访问: 192.168.4.1";
+        }
+        
+        // 创建一个临时标签显示配置信息
+        static lv_obj_t* config_label = nullptr;
+        if (config_label == nullptr || !lv_obj_is_valid(config_label)) {
+          config_label = lv_label_create(lv_scr_act());
+          lv_obj_set_style_text_font(config_label, &lvgl_font_song_16, 0);
+          lv_obj_set_style_text_color(config_label, lv_color_hex(0x00FF00), 0);
+          lv_obj_set_width(config_label, screenWidth - 10); // 稍宽一些，留出边距
+          lv_obj_align(config_label, LV_ALIGN_BOTTOM_MID, 0, -10); // 底部中央对齐，距离底部10像素
+          lv_label_set_long_mode(config_label, LV_LABEL_LONG_SCROLL); // 设置为向上滚动显示模式
+        }
+        
+        if (config_label && lv_obj_is_valid(config_label)) {
+          lv_label_set_text(config_label, configInfo.c_str());
+          lv_obj_clear_flag(config_label, LV_OBJ_FLAG_HIDDEN);
+          lv_obj_move_foreground(config_label);
         }
       }
       

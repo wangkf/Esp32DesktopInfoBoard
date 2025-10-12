@@ -15,7 +15,6 @@ extern lv_font_t lvgl_font_digital_48;
 #include <SPIFFS.h>
 
 // 定义强制刷新标志
-bool forceRefreshNews = false;
 bool forceRefreshAstronauts = false;
 bool forceRefreshICIBA = false;
 
@@ -28,18 +27,14 @@ extern const long updateInterval;
 // DataManager单例通过getInstance()方法获取，不需要外部变量
 
 // 缓存数据变量
-String cachedNewsData = "";
 String cachedIcibaData = "";
 String cachedAstronautsData = "";
 String cachedISSData = "";
-unsigned long lastNewsUpdateTime = 0;
 unsigned long lastIcibaUpdateTime = 0;
 unsigned long lastAstronautsUpdateTime = 0;
-unsigned long lastISSUpdateTime = 0;
 
 // 函数前向声明
 void getICIBADailyInfo();
-void getNews();
 void getAstronautsData();
 
 // JSON解析缓冲区
@@ -191,9 +186,8 @@ void updateMinuteDisplay() {
       if (lastUpdatedHour != timeinfo.tm_hour) {
         Serial.println("[后台] 开始更新数据");
         // 后台获取并更新数据
-        getNews();
-        getICIBADailyInfo();
-        getAstronautsData(); // 获取宇航员数据
+          getICIBADailyInfo();
+          getAstronautsData(); // 获取宇航员数据
         
         lastUpdatedHour = timeinfo.tm_hour;
         Serial.println("[后台] 数据更新完成");
@@ -228,22 +222,8 @@ void getICIBADailyInfo() {
   forceRefreshICIBA = false;
 }
 
-// 获取新闻
-void getNews() {
-  // 完全委托给DataManager处理，与其他数据类型保持一致
-  String result;
-  if (DataManager::getInstance()->fetchData(NEWS_DATA, result)) {
-    Serial.println("获取今日简报成功");
-    lastNewsUpdateTime = millis();
-  } else {
-    Serial.println("获取今日简报失败");
-  }
-  forceRefreshNews = false;
-}
-
 // 标记为强制刷新数据（用于整点更新时调用）
 void forceRefreshData() {
-  forceRefreshNews = true;
   forceRefreshICIBA = true;
   // 强制刷新宇航员数据
   lastAstronautsUpdateTime = 0;
@@ -280,118 +260,6 @@ void getAstronautsInfo() {
 
 // 定义APRS_MAX_PACKETS常量，保留以兼容旧代码
 
-/**
- * 从文件加载并显示新闻数据
- */
-void net_displayNewsDataFromFile() {
-  Serial.println("尝试从文件加载新闻数据");
-  
-  // 确保news_label已创建
-  if (news_label == NULL || !lv_obj_is_valid(news_label)) {
-    if (news_label != NULL) {
-      // 确保旧标签被正确清理
-      lv_obj_del(news_label);
-    }
-    news_label = lv_label_create(lv_scr_act());
-    lv_obj_set_style_text_font(news_label, &lvgl_font_song_16, 0);
-    lv_obj_set_style_text_color(news_label, lv_color_hex(0x000000), 0); // 默认黑色
-    lv_obj_set_style_text_align(news_label, LV_TEXT_ALIGN_LEFT, 0);
-    lv_label_set_long_mode(news_label, LV_LABEL_LONG_WRAP); // 设置自动换行
-    lv_obj_set_width(news_label, screenWidth - 40); // 设置标签宽度
-    lv_obj_set_height(news_label, screenHeight - 120); // 固定高度
-    lv_obj_align(news_label, LV_ALIGN_TOP_MID, 0, 100); // 顶部居中对齐，顶部离屏幕顶部100px
-    
-    // 不添加背景和边框效果
-    lv_obj_set_style_bg_opa(news_label, 0, 0); // 完全透明背景
-    lv_obj_set_style_border_width(news_label, 0, 0); // 无边框
-    lv_obj_set_style_radius(news_label, 0, 0); // 无圆角
-    lv_obj_set_style_pad_all(news_label, 10, 0); // 内边距
-    
-    Serial.println("创建或重新创建了news_label");
-  }
-  
-  // 检查文件是否存在
-  if (SPIFFS.exists("/news.json")) {
-    File file = SPIFFS.open("/news.json", "r");
-    if (file) {
-      // 读取文件内容
-      String jsonString = file.readString();
-      file.close();
-      
-      // 解析JSON数据
-      DynamicJsonDocument doc(4096);
-      DeserializationError error = deserializeJson(doc, jsonString);
-      
-      if (!error) {
-        Serial.println("成功解析新闻数据文件");
-        
-        // 构建新闻内容字符串
-        String newsContent = "";
-        
-        // 检查是否包含result对象
-        if (doc.containsKey("result") && doc["result"].is<JsonObject>()) {
-          JsonObject result = doc["result"].as<JsonObject>();
-          
-          // 检查是否有新闻数据
-          if (result.containsKey("list") && result["list"].is<JsonArray>()) {
-            JsonArray newsList = result["list"].as<JsonArray>();
-            
-            // 显示最多10条新闻
-            int displayCount = min((int)newsList.size(), 10);
-            for (int i = 0; i < displayCount; i++) {
-              JsonObject newsItem = newsList[i];
-              
-              // 检查是否有标题
-              if (newsItem["title"].is<const char*>()) {
-                newsContent += String(i + 1) + ". " + String(newsItem["title"].as<const char*>()) + "\n\n";
-              }
-            }
-            
-            // 如果没有新闻数据，显示提示信息
-            if (newsList.size() == 0) {
-              newsContent = "暂无新闻数据";
-            }
-          } else {
-            newsContent = "暂无新闻数据";
-          }
-          
-          // 添加最后更新时间
-          if (result.containsKey("last_updated") && result["last_updated"].is<const char*>()) {
-            newsContent += "最后更新: " + String(result["last_updated"].as<const char*>());
-          }
-        } else {
-          newsContent = "新闻数据格式不正确";
-        }
-        
-        // 更新新闻标签
-        if (news_label && lv_obj_is_valid(news_label)) {
-          lv_label_set_text(news_label, newsContent.c_str());
-        }
-        
-        Serial.println("成功显示文件中的新闻数据");
-      } else {
-        Serial.print("解析新闻数据文件失败: ");
-        Serial.println(error.c_str());
-        
-        if (news_label && lv_obj_is_valid(news_label)) {
-          lv_label_set_text(news_label, "本地新闻数据解析失败");
-        }
-      }
-    } else {
-      Serial.println("无法打开新闻数据文件");
-      
-      if (news_label && lv_obj_is_valid(news_label)) {
-        lv_label_set_text(news_label, "无法打开本地新闻数据文件");
-      }
-    }
-  } else {
-    Serial.println("新闻数据文件不存在");
-    
-    if (news_label && lv_obj_is_valid(news_label)) {
-      lv_label_set_text(news_label, "本地新闻数据文件不存在");
-    }
-  }
-}
 
 /**
  * 从文件加载并显示金山词霸每日信息

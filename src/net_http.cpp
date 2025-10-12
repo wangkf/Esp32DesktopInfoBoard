@@ -4,31 +4,31 @@
 #include <HTTPClient.h>
 #include "config.h"
 #include "weather_display.h"
+#include "data_manager.h"
 #include <time.h>
 #include <map>
 #include <vector>
+#include <SPIFFS.h>
+
+// 定义强制刷新标志
+bool forceRefreshWeather = false;
+bool forceRefreshNews = false;
+bool forceRefreshAstronauts = false;
+bool forceRefreshIciba = false;
 
 // 外部变量声明
 extern lv_obj_t* hour_minute_label;
 extern lv_obj_t* second_label;
 extern lv_obj_t* weekday_label;
 extern lv_obj_t* date_label;
-extern lv_obj_t* wifi_icon_label;
 extern const char* ntpServer;
 
 extern unsigned long lastUpdateTime;
 extern const long updateInterval;
 
-// 全局变量：标记是否首次启动
-bool isFirstStartup = true;
+extern epd_rtc_data epd_rtc;
 
-// 城市代码定义
-String cityCode = "101010100"; // 默认北京
-
-// 强制刷新标志
-bool forceRefreshNews = false;
-bool forceRefreshWeather = false;
-bool forceRefreshIciba = false;
+// DataManager单例通过getInstance()方法获取，不需要外部变量
 
 // 缓存数据变量
 String cachedNewsData = "";
@@ -41,6 +41,65 @@ unsigned long lastWeatherUpdateTime = 0;
 unsigned long lastIcibaUpdateTime = 0;
 unsigned long lastAstronautsUpdateTime = 0;
 unsigned long lastISSUpdateTime = 0;
+
+// 天气代码映射数组
+int wtr_code[33] = {
+  100, 101, 102, 103, 104, 150, 151, 152, 153, 154, 
+  301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 
+  311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 
+  321, 322, 323
+};
+
+// JSON解析缓冲区
+DynamicJsonDocument docbuffer(4096);
+
+// 文件系统初始化
+bool initFS() {
+    if (!SPIFFS.begin(true)) {
+        Serial.println("SPIFFS挂载失败");
+        return false;
+    }
+    Serial.println("SPIFFS挂载成功");
+    return true;
+}
+
+// 写入JSON数据到文件
+bool writeJsonToFile(const String& filename, const JsonDocument& doc) {
+    File file = SPIFFS.open(filename, "w");
+    if (!file) {
+        Serial.println("无法打开文件进行写入: " + filename);
+        return false;
+    }
+    
+    if (serializeJson(doc, file) == 0) {
+        Serial.println("JSON序列化失败");
+        file.close();
+        return false;
+    }
+    
+    file.close();
+    Serial.println("成功写入文件: " + filename);
+    return true;
+}
+
+// 从文件读取JSON数据
+bool readJsonFromFile(const String& filename, JsonDocument& doc) {
+    File file = SPIFFS.open(filename, "r");
+    if (!file) {
+        Serial.println("无法打开文件进行读取: " + filename);
+        return false;
+    }
+    
+    DeserializationError error = deserializeJson(doc, file);
+    if (error) {
+        Serial.println("JSON反序列化失败: " + String(error.c_str()));
+        file.close();
+        return false;
+    }
+    
+    file.close();
+    return true;
+}
 
 // 连接WiFi网络
 void setupWiFi() {
@@ -58,6 +117,9 @@ void setupWiFi() {
   Serial.println("WiFi连接成功");
   Serial.print("IP地址: ");
   Serial.println(WiFi.localIP());
+  
+  // 初始化文件系统
+  initFS();
 }
 
 // 更新分钟显示（每分钟更新一次）
@@ -123,12 +185,12 @@ void updateMinuteDisplay() {
   }
   
   // 检查是否需要更新新闻和天气数据
-  if (isFirstStartup) {
+  if (DataManager::getInstance()->getIsFirstStartup()) {
     // 首次启动，立即获取数据
     getCityWeater();
     getNews();
     getIcibaDailyInfo();
-    isFirstStartup = false;
+    DataManager::getInstance()->setIsFirstStartup(false);
   } else if (WiFi.status() == WL_CONNECTED) {
     // 检查是否为整点且分钟为0，小时能被2整除
     if (timeinfo.tm_min == 0 && timeinfo.tm_hour % 2 == 0 && timeinfo.tm_sec < 10) {
@@ -153,16 +215,6 @@ void updateSecondDisplay() {
     // 获取时间失败时，秒标签显示默认值
     if (second_label) {
       lv_label_set_text(second_label, "--");
-    }
-    // 更新WiFi图标状态
-    if (wifi_icon_label) {
-      if (WiFi.status() == WL_CONNECTED) {
-        lv_label_set_text(wifi_icon_label, LV_SYMBOL_WIFI);
-        lv_obj_set_style_text_color(wifi_icon_label, lv_color_hex(0x00AA00), 0); // 连接成功为绿色
-      } else {
-        lv_label_set_text(wifi_icon_label, LV_SYMBOL_WIFI);
-        lv_obj_set_style_text_color(wifi_icon_label, lv_color_hex(0xAA0000), 0); // 未连接为红色
-      }
     }
     return;
   }
@@ -189,17 +241,6 @@ void updateSecondDisplay() {
   if (second_label && strcmp(lv_label_get_text(second_label), secondStringBuff) != 0) {
     lv_label_set_text(second_label, secondStringBuff);
   }
-  
-  // 更新WiFi图标状态
-  if (wifi_icon_label) {
-    if (WiFi.status() == WL_CONNECTED) {
-      lv_label_set_text(wifi_icon_label, LV_SYMBOL_WIFI);
-      lv_obj_set_style_text_color(wifi_icon_label, lv_color_hex(0x00AA00), 0); // 连接成功为绿色
-    } else {
-      lv_label_set_text(wifi_icon_label, LV_SYMBOL_WIFI);
-      lv_obj_set_style_text_color(wifi_icon_label, lv_color_hex(0xAA0000), 0); // 未连接为红色
-    }
-  }
 }
 
 // 更新时间显示（整合函数，供外部调用）
@@ -214,18 +255,11 @@ void updateTimeDisplay() {
 // 获取金山词霸每日信息
 void getIcibaDailyInfo() {
   // 检查是否需要从网络获取数据（首次启动或整点更新时）
-  if (isFirstStartup || forceRefreshIciba) {
+  if (DataManager::getInstance()->getIsFirstStartup() || forceRefreshIciba) {
     HTTPClient httpClient;
     
     // 检查WiFi连接状态
     if (WiFi.status() != WL_CONNECTED) {
-      // 如果有缓存数据，则使用缓存数据
-      if (iciba_label != NULL && cachedIcibaData.length() > 0) {
-        lv_label_set_text(iciba_label, cachedIcibaData.c_str());
-        Serial.println("WiFi未连接，使用缓存金山词霸数据");
-      } else {
-        Serial.println("WiFi未连接，无法获取金山词霸每日信息");
-      }
       forceRefreshIciba = false;
       return;
     }
@@ -242,6 +276,10 @@ void getIcibaDailyInfo() {
     Serial.println("正在获取金山词霸每日信息");
     Serial.println(URL);
     
+    // 定义icibaData变量并在函数开始时初始化
+    JsonDocument icibaData;
+    bool icibaDataValid = false;
+    
     // 启动连接并发送HTTP请求
     int httpCode = httpClient.GET();
     
@@ -253,86 +291,41 @@ void getIcibaDailyInfo() {
       // 解析JSON数据
       Serial.println("完整金山词霸数据响应：");
       Serial.println(icibaStr); // 打印完整的响应
-      DynamicJsonDocument icibaData(4096);
       DeserializationError error = deserializeJson(icibaData, icibaStr);
+      if (!error) {
+        icibaDataValid = true;
+      }
       
       if (error) {
         Serial.print(F("反序列化JSON失败: "));
         Serial.println(error.f_str());
-        // 如果有缓存数据，则使用缓存数据
-        if (iciba_label != NULL && cachedIcibaData.length() > 0) {
-          lv_label_set_text(iciba_label, cachedIcibaData.c_str());
-          Serial.println("解析失败，使用缓存金山词霸数据");
-        }
         httpClient.end();
         forceRefreshIciba = false;
         return;
       }
       
       // 检查是否有数据
-      if (icibaData.containsKey("content") && icibaData.containsKey("note")) {
-        const char* content = icibaData["content"].as<const char*>();
-        const char* note = icibaData["note"].as<const char*>();
-        
-        // 创建标签（如果尚未创建）
-        if (iciba_label == NULL || !lv_obj_is_valid(iciba_label)) {
-          if (iciba_label != NULL) {
-            // 确保旧标签被正确清理
-            lv_obj_del(iciba_label);
-          }
-          iciba_label = lv_label_create(lv_scr_act());
-          lv_label_set_long_mode(iciba_label, LV_LABEL_LONG_WRAP);
-          lv_obj_set_size(iciba_label, screenWidth - 20, screenHeight - 150); // 调整大小，确保不超出屏幕
-          lv_obj_align(iciba_label, LV_ALIGN_TOP_MID, 0, 120); // 上对齐，离顶部120px
-          lv_obj_set_style_text_font(iciba_label, &lvgl_font_song_16, 0);
-          lv_obj_set_style_text_color(iciba_label, lv_color_hex(0x333333), 0); // 深灰色文字
-          
-          // 添加背景和边框效果
-          lv_obj_set_style_bg_color(iciba_label, lv_color_hex(0xFFFFFF), 0); // 白色背景
-          lv_obj_set_style_bg_opa(iciba_label, 70, 0); // 半透明背景
-          lv_obj_set_style_border_width(iciba_label, 2, 0); // 边框宽度
-          lv_obj_set_style_border_color(iciba_label, lv_color_hex(0xCCCCCC), 0); // 灰色边框
-          lv_obj_set_style_radius(iciba_label, 10, 0); // 圆角
-          lv_obj_set_style_pad_all(iciba_label, 10, 0); // 内边距
-        }
-        
-        // 构建显示内容
-        String displayText = "今日格言：\n";
-        displayText += content;
-        displayText += "\n\n";
-        displayText += "翻译：";
-        displayText += note;
-        
-        // 显示内容
-        lv_label_set_text(iciba_label, displayText.c_str());
-        
-        // 保存到缓存
-        cachedIcibaData = displayText;
-        
+      if (icibaData["content"].is<const char*>() && icibaData["note"].is<const char*>()) {
         // 更新最后更新时间戳
         lastIcibaUpdateTime = millis();
       } else {
         Serial.println("暂无金山词霸数据");
-        // 如果有缓存数据，则使用缓存数据
-        if (iciba_label != NULL && cachedIcibaData.length() > 0) {
-          lv_label_set_text(iciba_label, cachedIcibaData.c_str());
-          Serial.println("暂无数据，使用缓存金山词霸数据");
-        }
       }
     } else {
       Serial.printf("HTTP请求失败，错误码: %d\n", httpCode);
-      // 如果有缓存数据，则使用缓存数据
-      if (iciba_label != NULL && cachedIcibaData.length() > 0) {
-        lv_label_set_text(iciba_label, cachedIcibaData.c_str());
-        Serial.println("获取失败，使用缓存金山词霸数据");
-      }
+    }
+    
+    // 将数据写入JSON文件
+    if (icibaDataValid && icibaData["content"].is<const char*>() && icibaData["note"].is<const char*>()) {
+        JsonDocument icibaJson;
+        icibaJson["content"] = icibaData["content"];
+        icibaJson["note"] = icibaData["note"];
+        icibaJson["update_time"] = millis();
+        writeJsonToFile("/iciba.json", icibaJson);
     }
     
     httpClient.end();
     forceRefreshIciba = false;
-  } else if (iciba_label != NULL && cachedIcibaData.length() > 0) {
-    // 非更新时间，直接显示缓存数据
-    lv_label_set_text(iciba_label, cachedIcibaData.c_str());
   }
 }
 
@@ -340,303 +333,102 @@ void getIcibaDailyInfo() {
 void getCityWeater() {
   Serial.println("开始获取天气信息");
   
-  // 检查是否需要从网络获取数据（首次启动或整点更新时）
-  if (isFirstStartup || forceRefreshWeather) {
-    HTTPClient httpClient;
-    
-    // 确保weather_label已创建
-    if (weather_label == NULL || !lv_obj_is_valid(weather_label)) {
-      if (weather_label != NULL) {
-        // 确保旧标签被正确清理
-        lv_obj_del(weather_label);
-      }
-      weather_label = lv_label_create(lv_scr_act());
-      lv_obj_set_style_text_font(weather_label, &lvgl_font_song_16, 0);
-      lv_obj_set_style_text_color(weather_label, lv_color_hex(0x0000FF), 0); // 默认蓝色
-      lv_obj_set_style_text_align(weather_label, LV_TEXT_ALIGN_LEFT, 0);
-      lv_label_set_long_mode(weather_label, LV_LABEL_LONG_WRAP); // 设置自动换行
-      lv_obj_set_width(weather_label, screenWidth - 40); // 设置标签宽度
-      lv_obj_set_height(weather_label, screenHeight - 120); // 固定高度，与屏幕底部对齐
-      lv_obj_align(weather_label, LV_ALIGN_TOP_MID, 0, 100); // 顶部居中对齐，顶部离屏幕顶部100px
-      
-      // 添加背景和边框效果
-      lv_obj_set_style_bg_color(weather_label, lv_color_hex(0xFFFFFF), 0); // 白色背景
-      lv_obj_set_style_bg_opa(weather_label, 70, 0); // 半透明背景
-      lv_obj_set_style_border_width(weather_label, 2, 0); // 边框宽度
-      lv_obj_set_style_border_color(weather_label, lv_color_hex(0xCCCCCC), 0); // 灰色边框
-      lv_obj_set_style_radius(weather_label, 10, 0); // 圆角
-      lv_obj_set_style_pad_all(weather_label, 10, 0); // 内边距
-      
-      Serial.println("创建或重新创建了weather_label");
+  // 确保weather_label已创建（用于显示状态信息）
+  if (weather_label == NULL || !lv_obj_is_valid(weather_label)) {
+    if (weather_label != NULL) {
+      // 确保旧标签被正确清理
+      lv_obj_del(weather_label);
     }
+    weather_label = lv_label_create(lv_scr_act());
+    lv_obj_set_style_text_font(weather_label, &lvgl_font_song_16, 0);
+    lv_obj_set_style_text_color(weather_label, lv_color_hex(0x0000FF), 0); // 默认蓝色
+    lv_obj_set_style_text_align(weather_label, LV_TEXT_ALIGN_LEFT, 0);
+    lv_label_set_long_mode(weather_label, LV_LABEL_LONG_WRAP); // 设置自动换行
+    lv_obj_set_width(weather_label, screenWidth - 40); // 设置标签宽度
+    lv_obj_set_height(weather_label, screenHeight - 120); // 固定高度，与屏幕底部对齐
+    lv_obj_align(weather_label, LV_ALIGN_TOP_MID, 0, 100); // 顶部居中对齐，顶部离屏幕顶部100px
     
+    // 不添加背景和边框效果
+    lv_obj_set_style_bg_opa(weather_label, 0, 0); // 完全透明背景
+    lv_obj_set_style_border_width(weather_label, 0, 0); // 无边框
+    lv_obj_set_style_radius(weather_label, 0, 0); // 无圆角
+    lv_obj_set_style_pad_all(weather_label, 10, 0); // 内边距
+    
+    Serial.println("创建或重新创建了weather_label");
+  }
+  
+  // 检查是否需要从网络获取数据（首次启动或整点更新时）
+  if (DataManager::getInstance()->getIsFirstStartup() || forceRefreshWeather) {
     // 检查WiFi连接状态
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("WiFi未连接，无法获取天气");
-      lv_label_set_text(weather_label, "WiFi未连接，无法获取天气数据");
-      lv_obj_clear_flag(weather_label, LV_OBJ_FLAG_HIDDEN);
-      lv_obj_move_foreground(weather_label);
-      
-      // 如果有缓存数据，则使用缓存数据
-      if (weatherDisplay.isInitialized()) {
-        showWeatherDisplay();
-        Serial.println("WiFi未连接，使用缓存天气数据");
-      }
       forceRefreshWeather = false;
       return;
     }
     
-    // 使用城市代码调用天气API
-    String URL = "http://apis.tianapi.com/tianqi/index?key=" + String(API_KEY) + "&city=" + cityCode;
-    
-    // 创建HTTPClient对象
-    httpClient.begin(URL);
-    
-    // 设置请求头中的User-Agent
-    httpClient.setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1");
-    httpClient.addHeader("Referer", "http://apis.tianapi.com/");
-    
+    // 调用新的天气数据获取函数
     Serial.println("正在获取天气数据");
-    Serial.println(URL);
+    int result = Http_Get_wthrcdn();
     
-    // 启动连接并发送HTTP请求
-    int httpCode = httpClient.GET();
-    
-    // 如果服务器响应OK则从服务器获取响应体信息并通过串口输出
-    if (httpCode == HTTP_CODE_OK) {
-      String weatherStr = httpClient.getString();
+    if (result == 1) {
       Serial.println("获取天气数据成功");
       
-      // 解析JSON数据
-      Serial.println("完整天气数据响应：");
-      Serial.println(weatherStr); // 打印完整的天气数据响应
-      DynamicJsonDocument weatherData(4096);
-      DeserializationError error = deserializeJson(weatherData, weatherStr);
+      // 将天气数据写入JSON文件
+      JsonDocument weatherJson;
+      weatherJson["city"] = epd_rtc.city;
+      weatherJson["current_temp"] = epd_rtc.Weather_Tmp_Real;
+      weatherJson["low_temp"] = epd_rtc.Weather_Tmp_Low;
+      weatherJson["high_temp"] = epd_rtc.Weather_Tmp_High;
+      weatherJson["weather_type"] = epd_rtc.Weather_Type;
+      weatherJson["weather_code"] = epd_rtc.Weather_TypeCode;
+      weatherJson["wind"] = epd_rtc.Wind_Direction;
+      weatherJson["humidity"] = epd_rtc.humidity;
+      weatherJson["limit_number"] = epd_rtc.limitnumber;
+      weatherJson["suggestion"] = epd_rtc.ys;
+      weatherJson["update_time"] = millis();
       
-      if (error) {
-        Serial.print(F("反序列化JSON失败: "));
-        Serial.println(error.f_str());
-        lv_label_set_text(weather_label, "解析天气数据失败");
-        lv_obj_clear_flag(weather_label, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_foreground(weather_label);
-        
-        // 如果有缓存数据，则使用缓存数据
-        if (weatherDisplay.isInitialized()) {
-          showWeatherDisplay();
-          Serial.println("解析失败，使用缓存天气数据");
-        }
-        httpClient.end();
-        forceRefreshWeather = false;
-        return;
+      // 添加预报数据
+      JsonArray forecast = weatherJson["forecast"].to<JsonArray>();
+      for (int i = 0; i < 5; i++) {
+        JsonObject dayForecast = forecast.add<JsonObject>();
+        dayForecast["date"] = epd_rtc.Weather_data[i];
+        dayForecast["high_temp"] = epd_rtc.tmp_max_data[i][0];
+        dayForecast["low_temp"] = epd_rtc.tmp_min_data[i][0];
+        dayForecast["day_code"] = epd_rtc.day_code[i][0];
+        dayForecast["night_code"] = epd_rtc.night_code[i][0];
       }
       
-      // 检查是否有天气数据
-      if (weatherData.containsKey("result") && weatherData["result"].containsKey("list")) {
-        // 获取今日天气数据
-        JsonObject todayWeather = weatherData["result"]["list"][0];
-        const char* date = todayWeather["date"].as<const char*>();
-        const char* week = todayWeather["week"].as<const char*>();
-        const char* weather = todayWeather["weather"].as<const char*>();
-        const char* temp_low = todayWeather["lowest"].as<const char*>();
-        const char* temp_high = todayWeather["highest"].as<const char*>();
-        const char* temp_now = todayWeather.containsKey("real") ? todayWeather["real"].as<const char*>() : "";
-        const char* humidity = todayWeather.containsKey("humidity") ? todayWeather["humidity"].as<const char*>() : "";
-        const char* wind = todayWeather["wind"].as<const char*>();
-        const char* wind_level = todayWeather["windsc"].as<const char*>();
-        
-        Serial.printf("天气数据解析成功: 日期=%s, 星期=%s, 天气=%s, 温度范围=%s-%s, 当前温度=%s\n", 
-                     date, week, weather, temp_low, temp_high, temp_now);
-        
-        // 构建完整天气信息
-        String weatherContent = "";
-        // 添加详细天气信息
-        if (strlen(temp_now) > 0) {
-          weatherContent += "当前温度:" + String(temp_now);
-        }
-        
-        if (strlen(humidity) > 0) {
-          weatherContent += "/湿度:" + String(humidity) + "% ";
-        }
-        weatherContent += String(weather) + String("\n");
-        weatherContent += String(temp_low) + String("-") + String(temp_high);
-        weatherContent += String(wind) + String(" ") + String(wind_level) + String("级\n");
-        
-        // 检查并创建weather_label
-        if (weather_label == NULL || !lv_obj_is_valid(weather_label)) {
-          if (weather_label != NULL) {
-            // 确保旧标签被正确清理
-            lv_obj_del(weather_label);
-          }
-          weather_label = lv_label_create(lv_scr_act());
-          lv_obj_set_style_text_font(weather_label, &lvgl_font_song_16, 0);
-          // 根据天气状况设置不同的文字颜色
-          if (String(weather).indexOf("晴") != -1) {
-            lv_obj_set_style_text_color(weather_label, lv_color_hex(0xFF6600), 0); // 橙色
-          } else if (String(weather).indexOf("雨") != -1) {
-            lv_obj_set_style_text_color(weather_label, lv_color_hex(0x0066CC), 0); // 蓝色
-          } else if (String(weather).indexOf("阴") != -1 || String(weather).indexOf("云") != -1) {
-            lv_obj_set_style_text_color(weather_label, lv_color_hex(0x666666), 0); // 灰色
-          } else {
-            lv_obj_set_style_text_color(weather_label, lv_color_hex(0x0000FF), 0); // 默认蓝色
-          }
-          lv_obj_set_style_text_align(weather_label, LV_TEXT_ALIGN_LEFT, 0);
-          lv_label_set_long_mode(weather_label, LV_LABEL_LONG_WRAP); // 设置自动换行
-          lv_obj_set_width(weather_label, screenWidth - 40); // 设置标签宽度
-          lv_obj_set_height(weather_label, screenHeight - 120); // 固定高度，与屏幕底部对齐
-          lv_obj_align(weather_label, LV_ALIGN_TOP_MID, 0, 100); // 顶部居中对齐，顶部离屏幕顶部100px
-          
-          // 不添加背景和边框效果
-          lv_obj_set_style_bg_opa(weather_label, 0, 0); // 完全透明背景
-          lv_obj_set_style_border_width(weather_label, 0, 0); // 无边框
-          lv_obj_set_style_radius(weather_label, 0, 0); // 无圆角
-          lv_obj_set_style_pad_all(weather_label, 10, 0); // 内边距
-        }
-        
-        // 确保天气内容不为空
-        if (weatherContent.length() > 0) {
-            Serial.printf("设置天气标签内容: %s\n", weatherContent.c_str());
-            
-            // 设置天气内容
-            lv_label_set_text(weather_label, weatherContent.c_str());
-            
-            // 确保标签可见
-            lv_obj_clear_flag(weather_label, LV_OBJ_FLAG_HIDDEN);
-            
-            // 确保标签在最上层
-            lv_obj_move_foreground(weather_label);
-            
-            // 初始化天气显示组件
-            if (!weatherDisplay.isInitialized()) {
-                Serial.println("初始化天气显示组件");
-                initWeatherDisplay();
-            }
-            
-            // 更新未来四天天气数据到图标和图表
-            for (int i = 0; i < 4 && i < weatherData["result"]["list"].size() - 1; i++) {
-                JsonObject dailyWeather = weatherData["result"]["list"][i+1]; // 从第二天开始显示
-                updateWeatherIcon(dailyWeather, i);
-            }
-            
-            // 刷新天气显示
-            Serial.println("刷新天气显示");
-            refreshWeatherDisplay();
-            
-            // 更新天气数据的最后更新时间戳
-            lastWeatherUpdateTime = millis();
-            
-            // 保存原始天气数据到缓存（可选，用于复杂的缓存恢复）
-            cachedWeatherData = weatherStr;
-        } else {
-            // 如果天气内容为空，使用默认信息
-            Serial.println("天气内容为空，使用默认信息");
-            lv_label_set_text(weather_label, "暂无天气数据，请稍后刷新");
-            lv_obj_clear_flag(weather_label, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_move_foreground(weather_label);
-        }
-      } else {
-        Serial.println("暂无天气数据");
-        lv_label_set_text(weather_label, "暂无天气数据");
-        lv_obj_clear_flag(weather_label, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_foreground(weather_label);
-        
-        // 如果有缓存数据，则使用缓存数据
-        if (weatherDisplay.isInitialized()) {
-          showWeatherDisplay();
-          Serial.println("暂无天气数据，使用缓存天气数据");
-        }
-      }
+      // 添加当前天气详情
+      JsonObject current = weatherJson["current"].to<JsonObject>();
+      current["temp"] = epd_rtc.Weather_Tmp_Real;
+      current["humidity"] = epd_rtc.humidity;
+      current["wind_speed"] = epd_rtc.Wind_Direction;
+      JsonObject condition = current["condition"].to<JsonObject>();
+      condition["text"] = epd_rtc.Weather_Type;
+      condition["code"] = epd_rtc.Weather_TypeCode;
+      
+      writeJsonToFile("/weather.json", weatherJson);
+      
+      // 更新天气数据的最后更新时间戳
+      lastWeatherUpdateTime = millis();
     } else {
-      Serial.printf("HTTP请求失败，错误码: %d\n", httpCode);
-      lv_label_set_text(weather_label, "获取天气数据失败");
-      lv_obj_clear_flag(weather_label, LV_OBJ_FLAG_HIDDEN);
-      lv_obj_move_foreground(weather_label);
-      
-      // 如果有缓存数据，则使用缓存数据
-        if (weatherDisplay.isInitialized()) {
-          showWeatherDisplay();
-          Serial.println("获取失败，使用缓存天气数据");
-        }
+      Serial.println("获取天气数据失败");
     }
     
-    httpClient.end();
     forceRefreshWeather = false;
-  } else {
-    // 非更新时间，检查weather_label并显示缓存数据
-    if (weather_label == NULL || !lv_obj_is_valid(weather_label)) {
-      Serial.println("非更新时间，但weather_label为空，创建它");
-      weather_label = lv_label_create(lv_scr_act());
-      lv_obj_set_style_text_font(weather_label, &lvgl_font_song_16, 0);
-      lv_obj_set_style_text_color(weather_label, lv_color_hex(0x0000FF), 0); // 默认蓝色
-      lv_obj_set_style_text_align(weather_label, LV_TEXT_ALIGN_LEFT, 0);
-      lv_label_set_long_mode(weather_label, LV_LABEL_LONG_WRAP);
-      lv_obj_set_width(weather_label, screenWidth - 40);
-      lv_obj_align(weather_label, LV_ALIGN_TOP_MID, 0, 50);
-      
-      // 不添加背景和边框效果
-      lv_obj_set_style_bg_opa(weather_label, 0, 0); // 完全透明背景
-      lv_obj_set_style_border_width(weather_label, 0, 0); // 无边框
-      lv_obj_set_style_radius(weather_label, 0, 0); // 无圆角
-      lv_obj_set_style_pad_all(weather_label, 10, 0);
-    }
-    
-    // 显示缓存的天气数据
-    if (weatherDisplay.isInitialized()) {
-      showWeatherDisplay();
-      Serial.println("非更新时间，显示缓存天气数据");
-    } else if (cachedWeatherData.length() > 0) {
-      // 如果weatherDisplay未初始化但有缓存的原始数据，尝试使用它
-      lv_label_set_text(weather_label, "使用缓存数据");
-      lv_obj_clear_flag(weather_label, LV_OBJ_FLAG_HIDDEN);
-      lv_obj_move_foreground(weather_label);
-      Serial.println("非更新时间，显示缓存文本数据");
-    } else {
-      // 如果没有任何缓存数据，显示默认信息
-      lv_label_set_text(weather_label, "加载天气数据中...");
-      lv_obj_clear_flag(weather_label, LV_OBJ_FLAG_HIDDEN);
-      lv_obj_move_foreground(weather_label);
-      Serial.println("非更新时间，显示加载提示");
-    }
   }
 }
+
 
 // 获取新闻
 void getNews() {
   // 检查是否需要从网络获取数据（首次启动或整点更新时）
-  if (isFirstStartup || forceRefreshNews) {
+  if (DataManager::getInstance()->getIsFirstStartup() || forceRefreshNews) {
     HTTPClient httpClient;
-    
-    // 检查并创建news_label
-    if (news_label == NULL || !lv_obj_is_valid(news_label)) {
-      if (news_label != NULL) {
-        // 确保旧标签被正确清理
-        lv_obj_del(news_label);
-      }
-      news_label = lv_label_create(lv_scr_act());
-      lv_label_set_long_mode(news_label, LV_LABEL_LONG_WRAP);
-      lv_obj_set_size(news_label, screenWidth - 20, screenHeight - 150); // 调整大小，确保不超出屏幕
-      lv_obj_align(news_label, LV_ALIGN_TOP_MID, 0, 120); // 上对齐，离顶部120px
-      lv_obj_set_style_text_font(news_label, &lvgl_font_song_16, 0);
-      lv_obj_set_style_text_color(news_label, lv_color_hex(0x333333), 0); // 深灰色文字
-      
-      // 添加背景和边框效果
-      lv_obj_set_style_bg_color(news_label, lv_color_hex(0xFFFFFF), 0); // 白色背景
-      lv_obj_set_style_bg_opa(news_label, 70, 0); // 半透明背景
-      lv_obj_set_style_border_width(news_label, 2, 0); // 边框宽度
-      lv_obj_set_style_border_color(news_label, lv_color_hex(0xCCCCCC), 0); // 灰色边框
-      lv_obj_set_style_radius(news_label, 10, 0); // 圆角
-      lv_obj_set_style_pad_all(news_label, 10, 0); // 内边距
-    }
     
     // 检查WiFi连接状态
     if (WiFi.status() != WL_CONNECTED) {
       // 如果有缓存数据，则使用缓存数据
-      if (cachedNewsData.length() > 0) {
-        lv_label_set_text(news_label, cachedNewsData.c_str());
-        Serial.println("WiFi未连接，使用缓存新闻数据");
-      } else {
-        lv_label_set_text(news_label, "WiFi未连接，无法获取新闻");
-        Serial.println("WiFi未连接，无法获取新闻");
-      }
       forceRefreshNews = false;
       return;
     }
@@ -662,68 +454,44 @@ void getNews() {
       Serial.println("获取今日简报成功");
       
       // 解析JSON数据
-      DynamicJsonDocument newsData(4096);
+      JsonDocument newsData;
       DeserializationError error = deserializeJson(newsData, newsStr);
       
       if (error) {
         Serial.print(F("反序列化JSON失败: "));
         Serial.println(error.f_str());
-        // 如果有缓存数据，则使用缓存数据
-        if (cachedNewsData.length() > 0) {
-          lv_label_set_text(news_label, cachedNewsData.c_str());
-          Serial.println("解析失败，使用缓存新闻数据");
-        } else {
-          lv_label_set_text(news_label, "解析新闻数据失败");
-        }
         httpClient.end();
         forceRefreshNews = false;
         return;
       }
       
-      // 检查是否有新闻数据
-      if (newsData.containsKey("result") && newsData["result"]["list"].size() > 0) {
-        String newsContent = "最新新闻：\n";
-        
-        // 获取前3条新闻
+      // 将新闻数据写入JSON文件
+      JsonDocument newsJson;
+      newsJson["update_time"] = millis();
+      JsonArray newsItems = newsJson["news"].to<JsonArray>();
+      
+      // 获取前10条新闻
+      if (newsData["result"].is<JsonObject>() && newsData["result"]["list"].size() > 0) {
         for (int i = 0; i < min(10, static_cast<int>(newsData["result"]["list"].size())); i++) {
           if (newsData["result"]["list"][i]["title"].is<const char*>()) {
             const char* title = newsData["result"]["list"][i]["title"].as<const char*>();
-            newsContent += String(i + 1) + "、" + String(title) + "\n";
+            JsonObject newsItem = newsItems.add<JsonObject>();
+            newsItem["id"] = i;
+            newsItem["title"] = title;
           }
         }
-        
-        lv_label_set_text(news_label, newsContent.c_str());
-        
-        // 保存到缓存
-        cachedNewsData = newsContent;
-      } else {
-        // 如果有缓存数据，则使用缓存数据
-        if (cachedNewsData.length() > 0) {
-          lv_label_set_text(news_label, cachedNewsData.c_str());
-          Serial.println("暂无新闻数据，使用缓存新闻数据");
-        } else {
-          lv_label_set_text(news_label, "暂无新闻数据");
-        }
       }
+      
+      writeJsonToFile("/news.json", newsJson);
       
       // 更新新闻数据的最后更新时间戳
       lastNewsUpdateTime = millis();
     } else {
       Serial.printf("HTTP请求失败，错误码: %d\n", httpCode);
-      // 如果有缓存数据，则使用缓存数据
-      if (cachedNewsData.length() > 0) {
-        lv_label_set_text(news_label, cachedNewsData.c_str());
-        Serial.println("获取失败，使用缓存新闻数据");
-      } else {
-        lv_label_set_text(news_label, "获取新闻失败");
-      }
     }
     
     httpClient.end();
     forceRefreshNews = false;
-  } else if (news_label != NULL && cachedNewsData.length() > 0) {
-    // 非更新时间，直接显示缓存数据
-    lv_label_set_text(news_label, cachedNewsData.c_str());
   }
 }
 
@@ -747,118 +515,76 @@ void getlunar() {
   Serial.println("getlunar函数尚未实现");
 }
 
-// 获取太空宇航员信息
+// 获取国际空间站宇航员信息
 void getAstronautsInfo() {
-  if (!astronauts_label) {
-    Serial.println("宇航员标签未初始化");
-    return;
-  }
-  
-  // 检查WiFi连接
+  // 检查WiFi连接状态
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi未连接，无法获取宇航员信息");
-    // 如果有缓存数据，则使用缓存数据
-    if (cachedAstronautsData.length() > 0) {
-      lv_label_set_text(astronauts_label, cachedAstronautsData.c_str());
-      Serial.println("使用缓存的宇航员数据");
-    } else {
-      lv_label_set_text(astronauts_label, "WiFi未连接，无法获取宇航员信息");
-    }
+    forceRefreshAstronauts = false;
     return;
   }
   
-  // 检查是否需要更新数据（24小时更新一次）
-  const unsigned long ASTRONAUTS_UPDATE_INTERVAL = 24 * 60 * 60 * 1000; // 24小时
-  bool shouldUpdate = (millis() - lastAstronautsUpdateTime >= ASTRONAUTS_UPDATE_INTERVAL) || lastAstronautsUpdateTime == 0;
-  
-  if (!shouldUpdate && cachedAstronautsData.length() > 0) {
-    // 非更新时间，直接显示缓存数据
-    lv_label_set_text(astronauts_label, cachedAstronautsData.c_str());
-    return;
-  }
-  
-  Serial.println("正在获取宇航员信息...");
-  
-  // 创建HTTP客户端
-  HTTPClient httpClient;
-  
-  // 连接到API
-  httpClient.begin("http://api.open-notify.org/astros.json");
-  
-  // 发送GET请求
-  int httpCode = httpClient.GET();
-  
-  if (httpCode == HTTP_CODE_OK) {
-    // 获取响应体
-    String response = httpClient.getString();
+  // 检查是否需要更新数据（首次启动或整点更新时）
+  if (DataManager::getInstance()->getIsFirstStartup() || forceRefreshAstronauts || lastAstronautsUpdateTime == 0) {
+    HTTPClient httpClient;
     
-    // 解析JSON数据
-    JsonDocument jsonDoc;
-    DeserializationError error = deserializeJson(jsonDoc, response);
+    String URL = "http://api.open-notify.org/astros.json";
     
-    if (error) {
-      Serial.print(F("解析宇航员JSON数据失败: "));
-      Serial.println(error.f_str());
-      // 如果有缓存数据，则使用缓存数据
-      if (cachedAstronautsData.length() > 0) {
-        lv_label_set_text(astronauts_label, cachedAstronautsData.c_str());
-        Serial.println("使用缓存的宇航员数据");
-      } else {
-        lv_label_set_text(astronauts_label, "解析宇航员数据失败");
+    // 创建HTTPClient对象
+    httpClient.begin(URL);
+    
+    Serial.println("正在获取宇航员信息");
+    
+    // 启动连接并发送HTTP请求
+    int httpCode = httpClient.GET();
+    
+    // 如果服务器响应OK则从服务器获取响应体信息并通过串口输出
+    if (httpCode == HTTP_CODE_OK) {
+      String astronautsStr = httpClient.getString();
+      Serial.println("获取宇航员信息成功");
+      
+      // 解析JSON数据
+      JsonDocument astronautsData;
+      DeserializationError error = deserializeJson(astronautsData, astronautsStr);
+      
+      if (error) {
+        Serial.print(F("反序列化JSON失败: "));
+        Serial.println(error.f_str());
+        httpClient.end();
+        forceRefreshAstronauts = false;
+        return;
       }
-      httpClient.end();
-      return;
-    }
-    
-    // 提取宇航员信息
-    int peopleCount = jsonDoc["number"];
-    String astronautsInfo = "太空现有人数: " + String(peopleCount) + "人\n";
-    
-    // 简单方式按航天器分类显示宇航员
-    JsonArray people = jsonDoc["people"];
-    
-    // 先收集所有航天器名称
-    std::vector<String> crafts;
-    for (JsonObject person : people) {
-      String craft = person["craft"].as<const char*>();
-      if (std::find(crafts.begin(), crafts.end(), craft) == crafts.end()) {
-        crafts.push_back(craft);
-      }
-    }
-    
-    // 按航天器输出宇航员信息
-    for (const String& craft : crafts) {
-      astronautsInfo += craft + ":\n";
-      for (JsonObject person : people) {
-        if (String(person["craft"].as<const char*>()) == craft) {
-          astronautsInfo += "- " + String(person["name"].as<const char*>()) + "\n";
+      
+      // 将宇航员数据写入JSON文件
+      JsonDocument astronautsJson;
+      astronautsJson["update_time"] = millis();
+      astronautsJson["total"] = astronautsData["number"];
+      
+      JsonArray people = astronautsJson["people"].to<JsonArray>();
+      
+      if (astronautsData["people"].is<JsonArray>()) {
+        for (JsonObject person : astronautsData["people"].as<JsonArray>()) {
+          JsonObject personObj = people.add<JsonObject>();
+          if (person["name"].is<const char*>()) {
+            personObj["name"] = person["name"].as<const char*>();
+          }
+          if (person["craft"].is<const char*>()) {
+            personObj["craft"] = person["craft"].as<const char*>();
+          }
         }
       }
-      astronautsInfo += "\n";
-    }
-    
-    // 更新标签显示
-    lv_label_set_text(astronauts_label, astronautsInfo.c_str());
-    
-    // 保存到缓存
-    cachedAstronautsData = astronautsInfo;
-    
-    // 更新最后更新时间
-    lastAstronautsUpdateTime = millis();
-    
-    Serial.println("成功获取宇航员信息");
-  } else {
-    Serial.printf("获取宇航员信息失败，错误码: %d\n", httpCode);
-    // 如果有缓存数据，则使用缓存数据
-    if (cachedAstronautsData.length() > 0) {
-      lv_label_set_text(astronauts_label, cachedAstronautsData.c_str());
-      Serial.println("使用缓存的宇航员数据");
+      
+      writeJsonToFile("/astronauts.json", astronautsJson);
+      
+      // 更新宇航员数据的最后更新时间戳
+      lastAstronautsUpdateTime = millis();
     } else {
-      lv_label_set_text(astronauts_label, "获取宇航员信息失败");
+      Serial.printf("HTTP请求失败，错误码: %d\n", httpCode);
     }
+    
+    httpClient.end();
+    forceRefreshAstronauts = false;
   }
-  
-  httpClient.end();
 }
 
 
@@ -922,56 +648,11 @@ void showCachedAPRSData() {
 extern lv_obj_t* aprs_label;
 extern lv_obj_t* aprs_table;
 void showAPRSData() {
-  // 创建APRS标签（如果尚未创建）
-  if (!aprs_label) {
-    aprs_label = lv_label_create(lv_scr_act());
-    lv_obj_set_style_text_font(aprs_label, &lvgl_font_song_16, 0); // 16px字体
-    lv_obj_set_style_text_color(aprs_label, lv_color_hex(0x000000), 0); // 黑色文字
-    lv_obj_set_width(aprs_label, screenWidth - 20); // 宽度为屏幕宽度减20px
-    lv_obj_align(aprs_label, LV_ALIGN_TOP_LEFT, 10, 70); // 左上角对齐，边距10,70
-    lv_label_set_text(aprs_label, "正在连接APRS服务器...");
-    lv_label_set_long_mode(aprs_label, LV_LABEL_LONG_WRAP); // 自动换行
-  }
-  
-  // 确保APRS标签可见
-  lv_obj_clear_flag(aprs_label, LV_OBJ_FLAG_HIDDEN);
-  
-  // 创建APRS表格（如果尚未创建）
-  if (!aprs_table) {
-    aprs_table = lv_table_create(lv_scr_act());
-    lv_table_set_col_cnt(aprs_table, 2); // 2列：呼号、信息
-    lv_table_set_row_cnt(aprs_table, APRS_MAX_PACKETS + 1); // +1 用于表头
-    
-    // 设置表格样式
-    lv_obj_set_style_text_font(aprs_table, &lvgl_font_song_16, 0);
-    lv_obj_set_style_text_color(aprs_table, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_bg_color(aprs_table, lv_color_hex(0xFFFFFF), 0);
-    
-    // 设置表格宽度为屏幕宽度
-    lv_obj_set_width(aprs_table, screenWidth - 20);
-    lv_obj_set_height(aprs_table, 300); // 设置表格高度
-    
-    // 设置列宽，适应屏幕宽度
-    lv_table_set_col_width(aprs_table, 0, (screenWidth - 30) * 0.30); // 呼号列
-    lv_table_set_col_width(aprs_table, 1, (screenWidth - 30) * 0.70); // 信息列
-    
-    // 设置表格位置（在标签下方）
-    lv_obj_align(aprs_table, LV_ALIGN_TOP_MID, 0, 100);
-  }
-  
-  // 确保APRS表格可见
-  lv_obj_clear_flag(aprs_table, LV_OBJ_FLAG_HIDDEN);
+    Serial.println("尝试从网络获取APRS数据");
   
   // 检查WiFi连接状态
   if (WiFi.status() != WL_CONNECTED) {
-    // 如果有缓存数据，则显示缓存数据
-    if (!aprsPacketCache.empty()) {
-      showCachedAPRSData();
-      Serial.println("WiFi未连接，显示缓存的APRS数据");
-    } else {
-      lv_label_set_text(aprs_label, "WiFi未连接，无法获取APRS数据");
-      Serial.println("WiFi未连接，无法获取APRS数据");
-    }
+    Serial.println("WiFi未连接，无法获取APRS数据");
     return;
   }
   
@@ -983,14 +664,7 @@ void showAPRSData() {
   Serial.println(APRS_PORT);
   
   if (!aprsClient.connect(APRS_SERVER, APRS_PORT)) {
-    // 如果有缓存数据，则显示缓存数据
-    if (!aprsPacketCache.empty()) {
-      showCachedAPRSData();
-      Serial.println("无法连接到APRS服务器，显示缓存数据");
-    } else {
-      lv_label_set_text(aprs_label, "无法连接到APRS服务器");
-      Serial.println("无法连接到APRS服务器");
-    }
+    Serial.println("无法连接到APRS服务器");
     return;
   }
   
@@ -1006,21 +680,6 @@ void showAPRSData() {
   // 等待服务器响应
   unsigned long startTime = millis();
   int newPacketCount = 0;
-  
-  // 表头设置
-  lv_table_set_cell_value(aprs_table, 0, 0, "呼号");
-  lv_table_set_cell_value(aprs_table, 0, 1, "信息");
-  
-  // 设置表头样式
-  lv_obj_set_style_bg_color(aprs_table, lv_color_hex(0xCCCCCC), LV_PART_ITEMS | LV_STATE_DEFAULT);
-  
-  // 清空之前的数据
-  for (int i = 1; i <= APRS_MAX_PACKETS; i++) {
-    lv_table_set_cell_value(aprs_table, i, 0, "");
-    lv_table_set_cell_value(aprs_table, i, 1, "");
-  }
-  
-  lv_label_set_text(aprs_label, "正在接收APRS数据...");
   
   // 接收数据的最大等待时间（毫秒）
   const unsigned long MAX_WAIT_TIME = 10000; // 10秒
@@ -1044,7 +703,7 @@ void showAPRSData() {
         String callSign = line.substring(0, callSignEndPos);
         String info = line.substring(callSignEndPos + 1);
         
-        // 只显示信息部分的前50个字符
+        // 只保存信息部分的前50个字符
         if (info.length() > 50) {
           info = info.substring(0, 50) + "...";
         }
@@ -1055,18 +714,552 @@ void showAPRSData() {
         newPacketCount++;
       }
     }
-    
-    // 处理LVGL事件
-    lv_timer_handler();
   }
   
   // 断开连接
   aprsClient.stop();
   
-  // 显示缓存的数据包（包括新收到的和之前缓存的）
-  showCachedAPRSData();
+  // 将APRS数据写入JSON文件
+  if (!aprsPacketCache.empty()) {
+      JsonDocument aprsJson;
+      aprsJson["update_time"] = millis();
+      aprsJson["total_packets"] = aprsPacketCache.size();
+      JsonArray packetsArray = aprsJson["packets"].to<JsonArray>();
+      
+      // 倒序添加，最新的在前面
+      for (auto it = aprsPacketCache.rbegin(); it != aprsPacketCache.rend(); ++it) {
+          JsonObject packetObj = packetsArray.add<JsonObject>();
+          packetObj["callsign"] = it->callSign;
+          packetObj["info"] = it->info;
+          packetObj["timestamp"] = it->timestamp;
+      }
+      
+      writeJsonToFile("/aprs.json", aprsJson);
+  }
   
   Serial.print("APRS数据接收完成，新增：");
   Serial.print(newPacketCount);
   Serial.println("条数据包");
+  }
+
+// 获取天气数据函数 - 基于weather.com.cn的API
+int Http_Get_wthrcdn(void)
+{
+  int i;
+  HTTPClient http;
+  String  errjson = "err_code";
+  
+  // 设置请求头中的User-Agent和Referer
+  http.begin("http://d1.weather.com.cn/weather_index/" + String(epd_rtc.citycode) + ".html"); 
+  http.setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1");
+  http.addHeader("Referer", "http://www.weather.com.cn/");
+  
+  int httpCode = http.GET();
+  
+  // 处理HTTP请求结果
+  if (httpCode > 0) {
+    if (httpCode == HTTP_CODE_OK) {
+      String str = http.getString();
+      
+      // 提取dataSK部分的数据
+      int indexStart = str.indexOf("dataSK = ");
+      int indexEnd = str.indexOf(";var dataZS");
+      if (indexStart != -1 && indexEnd != -1) {
+        String jsonDataSK = str.substring(indexStart + 8, indexEnd);
+        docbuffer.clear();
+        deserializeJson(docbuffer, jsonDataSK);   // 反序列化json 
+        JsonObject sk = docbuffer.as<JsonObject>();
+        
+        // 提取城市名称
+        String city = sk["cityname"].as<String>();
+        sprintf(epd_rtc.city, "%s", city.c_str());
+        
+        // 提取实时温度
+        epd_rtc.Weather_Tmp_Real = sk["temp"];
+        
+        // 提取湿度
+        const char *weatherdatas0 = sk["SD"];
+        sprintf(epd_rtc.humidity, "%s", weatherdatas0);
+        
+        // 提取更新时间
+        const char *weatherdatas1 = sk["time"];
+        sprintf(epd_rtc.time, "%s", weatherdatas1);
+        
+        // 提取限行信息
+        const char *weatherdatas2 = sk["limitnumber"];
+        sprintf(epd_rtc.limitnumber, "%s", weatherdatas2);
+        
+        // 提取天气代码并进行转换
+        const char *real_weather_code = sk["weathercode"];
+        int weather_code = atoi(&real_weather_code[1]);
+        if (weather_code == 301) {weather_code = 8;}
+        if (weather_code == 302) {weather_code = 15;}
+        if (weather_code > 31) {weather_code = 32;}
+        epd_rtc.Weather_TypeCode = wtr_code[weather_code];
+        
+        // 提取天气描述
+        const char *weatherdatas3 = sk["weather"];
+        sprintf(epd_rtc.Weather_Type, "%s", weatherdatas3);
+        
+        // 提取风力风向
+        String Wind_data = sk["WD"].as<String>() + " " + sk["WS"].as<String>();
+        sprintf(epd_rtc.Wind_Direction, "%s", Wind_data.c_str());
+      }
+      
+      // 提取dataZS部分的数据
+      indexStart = str.indexOf(";var dataZS ={\"zs\":");
+      indexEnd = str.indexOf(",\"cn\":\"");
+      if (indexStart != -1 && indexEnd != -1) {
+        String jsonSuggest = str.substring(indexStart + 19, indexEnd);
+        docbuffer.clear();
+        deserializeJson(docbuffer, jsonSuggest);   // 反序列化json 
+        JsonObject dataSuggestJson = docbuffer.as<JsonObject>();
+        
+        // 提取防晒信息
+        String fs_data = dataSuggestJson["pp_name"].as<String>() + ":" + dataSuggestJson["pp_hint"].as<String>() + "," + dataSuggestJson["pp_des_s"].as<String>();
+        sprintf(epd_rtc.fs, "%s", fs_data.c_str());
+        
+        // 提取带伞建议
+        String ys_data = dataSuggestJson["ys_name"].as<String>() + ":" + dataSuggestJson["ys_hint"].as<String>() + "," + dataSuggestJson["ys_des_s"].as<String>();
+        sprintf(epd_rtc.ys, "%s", ys_data.c_str());
+      }
+      
+      // 提取5天天气预报数据
+      indexStart = str.indexOf("};var fc = ");
+      if (indexStart != -1) {
+        String payload = str.substring(indexStart + 10);
+        docbuffer.clear();
+        deserializeJson(docbuffer, payload);   // 反序列化json 
+        JsonObject root = docbuffer.as<JsonObject>();
+        
+        if (root != 0) {
+          int error_code = root[errjson];
+          if (error_code == 0)   // 无错误
+          {
+            // 提取当天最高和最低温度
+            epd_rtc.Weather_Tmp_High = root["f"][0]["fc"];
+            epd_rtc.Weather_Tmp_Low = root["f"][0]["fd"];
+            
+            // 提取5天天气数据
+            for (i = 0; i < 5; i++) {
+              // 提取白天天气代码
+              const char *day = root["f"][i]["fa"];
+              int dn = atoi(day);
+              if (dn > 31) dn = 32; // 显示空
+              epd_rtc.day_code[i][0] = wtr_code[dn];
+              
+              // 提取夜晚天气代码
+              const char *night = root["f"][i]["fb"];
+              int nn = atoi(night);
+              if (nn > 31) nn = 32; // 显示空
+              epd_rtc.night_code[i][0] = wtr_code[nn];
+              
+              // 转换晚上晴天和阴天为夜晚图标
+              if (epd_rtc.night_code[i][0] == 100) { // 晚上晴天转换成夜晚图标
+                epd_rtc.night_code[i][0] = 150;
+              }
+              if (epd_rtc.night_code[i][0] == 104) { // 晚上阴天转换成夜晚图标
+                epd_rtc.night_code[i][0] = 154;
+              }
+              
+              // 提取最高温度
+              const char *tmp_max = root["f"][i]["fc"];
+              epd_rtc.tmp_max_data[i][0] = atoi(tmp_max);
+              
+              // 提取最低温度
+              const char *tmp_min = root["f"][i]["fd"];
+              epd_rtc.tmp_min_data[i][0] = atoi(tmp_min);
+              
+              // 提取日期
+              const char *date = root["f"][i]["fj"];
+              sprintf(epd_rtc.Weather_data[i], "%s", date); 
+            }
+          }
+        }
+      }
+    }
+  } else {
+    Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+  }
+  
+  // 结束HTTP连接
+  http.end();
+  
+  return 1;
+}
+
+/**
+ * 从文件加载并显示天气数据
+ */
+void net_displayWeatherDataFromFile() {
+  Serial.println("尝试从文件加载天气数据");
+  
+  // 检查文件是否存在
+  if (SPIFFS.exists("/weather.json")) {
+      File file = SPIFFS.open("/weather.json", "r");
+    if (file) {
+      // 读取文件内容
+      String jsonString = file.readString();
+      file.close();
+      
+      // 解析JSON数据
+      DynamicJsonDocument doc(4096);
+      DeserializationError error = deserializeJson(doc, jsonString);
+      
+      if (!error) {
+        Serial.println("成功解析天气数据文件");
+        
+        // 构建天气内容字符串
+        String weatherContent = "";
+        
+        // 获取当前天气信息
+        if (doc["current"].is<JsonObject>()) {
+          JsonObject current = doc["current"];
+          if (current["temp"].is<float>()) {
+            weatherContent += "当前温度: " + String(current["temp"].as<float>()) + "°C\n";
+          }
+          if (current["humidity"].is<int>()) {
+            weatherContent += "湿度: " + String(current["humidity"].as<int>()) + "%\n";
+          }
+          if (current["wind_speed"].is<float>()) {
+            weatherContent += "风速: " + String(current["wind_speed"].as<float>()) + " km/h\n";
+          }
+          if (current["condition"].is<JsonObject>()) {
+            JsonObject condition = current["condition"];
+            if (condition["text"].is<const char*>()) {
+              weatherContent += "天气状况: " + String(condition["text"].as<const char*>()) + "\n";
+            }
+          }
+          weatherContent += "\n";
+        }
+        
+        // 获取每日天气预报
+        if (doc["forecast"].is<JsonObject>() && doc["forecast"]["forecastday"].is<JsonArray>()) {
+          JsonArray forecastday = doc["forecast"]["forecastday"];
+          
+          for (JsonObject day : forecastday) {
+            if (day["date"].is<const char*>()) {
+              weatherContent += "日期: " + String(day["date"].as<const char*>()) + "\n";
+            }
+            if (day["day"].is<JsonObject>()) {
+              JsonObject dayWeather = day["day"];
+              if (dayWeather["maxtemp_c"].is<float>()) {
+                weatherContent += "最高温度: " + String(dayWeather["maxtemp_c"].as<float>()) + "°C\n";
+              }
+              if (dayWeather["mintemp_c"].is<float>()) {
+                weatherContent += "最低温度: " + String(dayWeather["mintemp_c"].as<float>()) + "°C\n";
+              }
+              if (dayWeather["condition"].is<JsonObject>()) {
+                JsonObject condition = dayWeather["condition"];
+                if (condition["text"].is<const char*>()) {
+                  weatherContent += "天气状况: " + String(condition["text"].as<const char*>()) + "\n";
+                }
+              }
+              weatherContent += "\n";
+            }
+          }
+        }
+        
+        // 更新天气标签
+        if (weather_label && lv_obj_is_valid(weather_label)) {
+          lv_label_set_text(weather_label, weatherContent.c_str());
+        }
+        
+        Serial.println("成功显示文件中的天气数据");
+      } else {
+        Serial.print("解析天气数据文件失败: ");
+        Serial.println(error.c_str());
+        
+        if (weather_label && lv_obj_is_valid(weather_label)) {
+          lv_label_set_text(weather_label, "本地天气数据解析失败");
+        }
+      }
+    } else {
+      Serial.println("无法打开天气数据文件");
+      
+      if (weather_label && lv_obj_is_valid(weather_label)) {
+        lv_label_set_text(weather_label, "无法打开本地天气数据文件");
+      }
+    }
+  } else {
+    Serial.println("天气数据文件不存在");
+    
+    if (weather_label && lv_obj_is_valid(weather_label)) {
+      lv_label_set_text(weather_label, "本地天气数据文件不存在");
+    }
+  }
+}
+
+/**
+ * 从文件加载并显示新闻数据
+ */
+void net_displayNewsDataFromFile() {
+  Serial.println("尝试从文件加载新闻数据");
+  
+  // 检查文件是否存在
+  if (SPIFFS.exists("/news.json")) {
+      File file = SPIFFS.open("/news.json", "r");
+    if (file) {
+      // 读取文件内容
+      String jsonString = file.readString();
+      file.close();
+      
+      // 解析JSON数据
+      DynamicJsonDocument doc(4096);
+      DeserializationError error = deserializeJson(doc, jsonString);
+      
+      if (!error) {
+        Serial.println("成功解析新闻数据文件");
+        
+        // 构建新闻内容字符串
+        String newsContent = "";
+        
+        // 检查是否有新闻数据
+        if (doc["news"].is<JsonArray>()) {
+          JsonArray news = doc["news"];
+          
+          // 显示最多10条新闻
+          int displayCount = min((int)news.size(), 10);
+          for (int i = 0; i < displayCount; i++) {
+            JsonObject newsItem = news[i];
+            
+            // 检查是否有标题
+            if (newsItem["title"].is<const char*>()) {
+              newsContent += String(i + 1) + ". " + String(newsItem["title"].as<const char*>()) + "\n\n";
+            }
+          }
+          
+          // 如果没有新闻数据，显示提示信息
+          if (news.size() == 0) {
+            newsContent = "暂无新闻数据";
+          }
+        } else {
+          newsContent = "暂无新闻数据";
+        }
+        
+        // 更新新闻标签
+        if (news_label && lv_obj_is_valid(news_label)) {
+          lv_label_set_text(news_label, newsContent.c_str());
+        }
+        
+        Serial.println("成功显示文件中的新闻数据");
+      } else {
+        Serial.print("解析新闻数据文件失败: ");
+        Serial.println(error.c_str());
+        
+        if (news_label && lv_obj_is_valid(news_label)) {
+          lv_label_set_text(news_label, "本地新闻数据解析失败");
+        }
+      }
+    } else {
+      Serial.println("无法打开新闻数据文件");
+      
+      if (news_label && lv_obj_is_valid(news_label)) {
+        lv_label_set_text(news_label, "无法打开本地新闻数据文件");
+      }
+    }
+  } else {
+    Serial.println("新闻数据文件不存在");
+    
+    if (news_label && lv_obj_is_valid(news_label)) {
+      lv_label_set_text(news_label, "本地新闻数据文件不存在");
+    }
+  }
+}
+
+/**
+ * 从文件加载并显示金山词霸每日信息
+ */
+void net_displayIcibaDataFromFile() {
+  Serial.println("尝试从文件加载金山词霸每日信息");
+  
+  // 检查文件是否存在
+  if (SPIFFS.exists("/iciba.json")) {
+      File file = SPIFFS.open("/iciba.json", "r");
+    if (file) {
+      // 读取文件内容
+      String jsonString = file.readString();
+      file.close();
+      
+      // 解析JSON数据
+      DynamicJsonDocument doc(2048);
+      DeserializationError error = deserializeJson(doc, jsonString);
+      
+      if (!error) {
+        Serial.println("成功解析金山词霸数据文件");
+        
+        // 构建显示内容
+        String displayText = "\n";
+        
+        // 获取句子信息
+        if (doc["content"].is<const char*>()) {
+          displayText += String(doc["content"].as<const char*>()) + "\n\n";
+        }
+        
+        // 获取翻译信息
+        if (doc["note"].is<const char*>()) {
+          displayText += String(doc["note"].as<const char*>());
+        }
+        
+        // 获取日期信息
+        if (doc["dateline"].is<const char*>()) {
+          displayText += "\n\n" + String(doc["dateline"].as<const char*>());
+        }
+        
+        // 更新金山词霸标签
+        if (iciba_label && lv_obj_is_valid(iciba_label)) {
+          lv_label_set_text(iciba_label, displayText.c_str());
+        }
+        
+        Serial.println("成功显示文件中的金山词霸数据");
+      } else {
+        Serial.print("解析金山词霸数据文件失败: ");
+        Serial.println(error.c_str());
+        
+        if (iciba_label && lv_obj_is_valid(iciba_label)) {
+          lv_label_set_text(iciba_label, "本地金山词霸数据解析失败");
+        }
+      }
+    } else {
+      Serial.println("无法打开金山词霸数据文件");
+      
+      if (iciba_label && lv_obj_is_valid(iciba_label)) {
+        lv_label_set_text(iciba_label, "无法打开本地金山词霸数据文件");
+      }
+    }
+  } else {
+    Serial.println("金山词霸数据文件不存在");
+    
+    if (iciba_label && lv_obj_is_valid(iciba_label)) {
+      lv_label_set_text(iciba_label, "本地金山词霸数据文件不存在");
+    }
+  }
+}
+
+/**
+ * 从文件加载并显示APRS数据
+ */
+void net_displayAPRSDataFromFile() {
+  Serial.println("尝试从文件加载APRS数据");
+  
+  // 检查文件是否存在
+  if (SPIFFS.exists("/aprs.json")) {
+      File file = SPIFFS.open("/aprs.json", "r");
+    if (file) {
+      // 读取文件内容
+      String jsonString = file.readString();
+      file.close();
+      
+      // 解析JSON数据
+      DynamicJsonDocument doc(4096);
+      DeserializationError error = deserializeJson(doc, jsonString);
+      
+      if (!error) {
+        Serial.println("成功解析APRS数据文件");
+        
+        // 确保APRS标签和表格已创建
+        if (!aprs_label) {
+          aprs_label = lv_label_create(lv_scr_act());
+          lv_obj_set_style_text_font(aprs_label, &lvgl_font_song_16, 0);
+          lv_obj_set_style_text_color(aprs_label, lv_color_hex(0x000000), 0);
+          lv_obj_set_width(aprs_label, screenWidth - 20);
+          lv_obj_align(aprs_label, LV_ALIGN_TOP_LEFT, 10, 70);
+          lv_label_set_long_mode(aprs_label, LV_LABEL_LONG_WRAP);
+        }
+        
+        if (!aprs_table) {
+          aprs_table = lv_table_create(lv_scr_act());
+          lv_table_set_col_cnt(aprs_table, 2);
+          lv_table_set_row_cnt(aprs_table, APRS_MAX_PACKETS + 1);
+          
+          // 设置表格样式
+          lv_obj_set_style_text_font(aprs_table, &lvgl_font_song_16, 0);
+          lv_obj_set_style_text_color(aprs_table, lv_color_hex(0x000000), 0);
+          lv_obj_set_style_bg_color(aprs_table, lv_color_hex(0xFFFFFF), 0);
+          
+          // 设置表格宽度和高度
+          lv_obj_set_width(aprs_table, screenWidth - 20);
+          lv_obj_set_height(aprs_table, 300);
+          
+          // 设置列宽
+          lv_table_set_col_width(aprs_table, 0, (screenWidth - 30) * 0.30);
+          lv_table_set_col_width(aprs_table, 1, (screenWidth - 30) * 0.70);
+          
+          // 设置表格位置
+          lv_obj_align(aprs_table, LV_ALIGN_TOP_MID, 0, 100);
+        }
+        
+        // 确保标签和表格可见
+        lv_obj_clear_flag(aprs_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(aprs_table, LV_OBJ_FLAG_HIDDEN);
+        
+        // 更新标签显示
+        lv_label_set_text(aprs_label, "显示本地APRS数据");
+        
+        // 表头设置
+        lv_table_set_cell_value(aprs_table, 0, 0, "呼号");
+        lv_table_set_cell_value(aprs_table, 0, 1, "信息");
+        
+        // 设置表头样式
+        lv_obj_set_style_bg_color(aprs_table, lv_color_hex(0xCCCCCC), LV_PART_ITEMS | LV_STATE_DEFAULT);
+        
+        // 清空之前的数据
+        for (int i = 1; i <= APRS_MAX_PACKETS; i++) {
+          lv_table_set_cell_value(aprs_table, i, 0, "");
+          lv_table_set_cell_value(aprs_table, i, 1, "");
+        }
+        
+        // 显示APRS数据
+        if (doc["packets"].is<JsonArray>()) {
+          JsonArray packets = doc["packets"];
+          int row = 1;
+          
+          // 显示最多APRS_MAX_PACKETS条数据
+          int displayCount = min(packets.size(), (size_t)APRS_MAX_PACKETS);
+          for (int i = 0; i < displayCount; i++) {
+            JsonObject packet = packets[i];
+            
+            // 获取呼号
+            const char* callsign = packet["callsign"].is<const char*>() ? packet["callsign"].as<const char*>() : "未知";
+            
+            // 获取信息
+            const char* info = packet["info"].is<const char*>() ? packet["info"].as<const char*>() : "";
+            
+            // 设置表格内容
+            lv_table_set_cell_value(aprs_table, row, 0, callsign);
+            lv_table_set_cell_value(aprs_table, row, 1, info);
+            
+            row++;
+          }
+          
+          // 如果没有数据，显示提示
+          if (packets.size() == 0) {
+            lv_table_set_cell_value(aprs_table, 1, 0, "暂无数据");
+            lv_table_set_cell_value(aprs_table, 1, 1, "");
+          }
+        }
+        
+        Serial.println("成功显示文件中的APRS数据");
+      } else {
+        Serial.print("解析APRS数据文件失败: ");
+        Serial.println(error.c_str());
+        
+        if (aprs_label && lv_obj_is_valid(aprs_label)) {
+          lv_label_set_text(aprs_label, "本地APRS数据解析失败");
+        }
+      }
+    } else {
+      Serial.println("无法打开APRS数据文件");
+      
+      if (aprs_label && lv_obj_is_valid(aprs_label)) {
+        lv_label_set_text(aprs_label, "无法打开本地APRS数据文件");
+      }
+    }
+  } else {
+    Serial.println("APRS数据文件不存在");
+    
+    if (aprs_label && lv_obj_is_valid(aprs_label)) {
+      lv_label_set_text(aprs_label, "本地APRS数据文件不存在");
+    }
+  }
 }

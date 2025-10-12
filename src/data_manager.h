@@ -15,7 +15,6 @@
 enum DataType {
     WEATHER_DATA,
     NEWS_DATA,
-    QUOTE_DATA,
     ICBA_DATA,
     ASTRONAUTS_DATA,
     APRS_DATA
@@ -32,14 +31,12 @@ private:
     // 缓存相关变量
     unsigned long lastWeatherUpdateTime;  // 上次天气数据更新时间
     unsigned long lastNewsUpdateTime;     // 上次新闻数据更新时间
-    unsigned long lastQuoteUpdateTime;    // 上次每日一句更新时间
     unsigned long lastAstronautsUpdateTime; // 上次宇航员数据更新时间
     unsigned long lastAPRSUpdateTime;     // 上次APRS数据更新时间
     
     // 数据缓存
     String weatherData;         // 天气数据缓存
     String newsData;            // 新闻数据缓存
-    String quoteData;           // 每日一句缓存
     String icbaData;            // ICBA数据缓存
     String astronautsData;      // 宇航员数据缓存
     String aprsData;            // APRS数据缓存
@@ -75,9 +72,6 @@ public:
     // 获取新闻数据
     String getNewsData();
     
-    // 获取每日一句
-    String getQuoteData();
-    
     // 获取ICBA数据
     String getIcbaData();
     
@@ -87,14 +81,17 @@ public:
     // 获取APRS数据
     String getAprsData();
     
+    // 获取是否首次启动状态
+    bool getIsFirstStartup();
+    
+    // 设置是否首次启动状态
+    void setIsFirstStartup(bool value);
+    
     // 从服务器获取天气数据
     bool fetchWeatherData(String &result);
     
     // 从服务器获取新闻数据
     bool fetchNewsData(String &result);
-    
-    // 从服务器获取每日一句
-    bool fetchQuoteData(String &result);
     
     // 从服务器获取ICBA数据
     bool fetchIcbaData(String &result);

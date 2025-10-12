@@ -21,6 +21,20 @@ extern bool TianXingAPIKEY_Flag;
 class WeatherDisplay {
 private:
     bool initialized;         // 是否已初始化
+    
+    // 当前天气信息显示组件
+    lv_obj_t* current_weather_container; // 当前天气信息容器
+    lv_obj_t* current_temp_label;        // 当前温度标签
+    lv_obj_t* current_weather_desc_label; // 当前天气描述标签
+    lv_obj_t* current_weather_icon;      // 当前天气图标
+    
+    // 天气详情标签
+    lv_obj_t* detail_humidity_label;     // 湿度标签
+    lv_obj_t* detail_wind_label;         // 风力标签
+    lv_obj_t* detail_limit_label;        // 限行标签
+    
+    // 天气建议标签
+    lv_obj_t* weather_suggestion_label;
 
 public:
     WeatherIconItem items[4]; // 4天的天气图标项目
@@ -31,6 +45,8 @@ public:
     
     void initialize();
     void updateWeatherData(const char* weatherJson);
+    void updateWeatherData(bool shouldUpdate);
+    void loadWeatherDataFromFile();
     void show();
     void hide();
     
@@ -39,6 +55,62 @@ public:
      * @return 是否已初始化
      */
     bool isInitialized() const;
+    
+    /**
+     * 设置限行信息
+     * @param text 限行文本内容
+     * @param color 文本颜色，默认为红色
+     */
+    void setDetailLimit(const char* text, lv_color_t color = lv_color_hex(0xFF0000));
+    
+    /**
+     * 设置天气建议信息
+     * @param text 天气建议文本内容
+     */
+    void setWeatherSuggestion(const char* text);
+    
+    /**
+     * 设置湿度信息
+     * @param text 湿度文本内容
+     */
+    void setDetailHumidity(const char* text);
+    
+    /**
+     * 设置风力信息
+     * @param text 风力文本内容
+     */
+    void setDetailWind(const char* text);
+    
+    /**
+     * 设置当前天气图标
+     * @param iconPath 图标路径
+     */
+    void setCurrentWeatherIcon(const char* iconPath);
+    
+    /**
+     * 设置当前天气描述
+     * @param text 天气描述文本
+     * @param color 文本颜色
+     */
+    void setCurrentWeatherDesc(const char* text, lv_color_t color);
+    
+    /**
+     * 设置当前天气描述文本
+     * @param text 天气描述文本
+     */
+    void setCurrentWeatherDescText(const char* text);
+    
+    /**
+     * 设置当前天气描述文本颜色
+     * @param color 文本颜色
+     */
+    void setCurrentWeatherDescColor(lv_color_t color);
+    
+    /**
+     * 设置当前温度标签文本
+     * @param text 温度文本内容
+     */
+    void setCurrentTempLabel(const char* text);
 
 };
 

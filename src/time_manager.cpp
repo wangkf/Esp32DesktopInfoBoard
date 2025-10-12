@@ -20,8 +20,6 @@ lv_obj_t* hour_minute_label = nullptr;
 lv_obj_t* second_label = nullptr;
 lv_obj_t* date_label = nullptr;
 lv_obj_t* week_label = nullptr;
-lv_obj_t* lunar_label = nullptr;
-lv_obj_t* wifi_status_icon = nullptr;
 
 // 定义中文星期数组
 const char* weekDays[] = {"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
@@ -43,8 +41,6 @@ TimeManager::TimeManager() {
     second_label = nullptr;
     date_label = nullptr;
     week_label = nullptr;
-    lunar_label = nullptr;
-    wifi_status_icon = nullptr;
 }
 
 /**
@@ -82,12 +78,13 @@ void TimeManager::init() {
         Serial.println("创建秒标签成功");
     }
 
-    // 创建日期标签
+    // 创建日期标签 - 修改位置和大小，确保完整显示
     if (!date_label) {
         date_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_text_font(date_label, &lvgl_font_song_16, 0); // 16px字体
         lv_obj_set_style_text_color(date_label, lv_color_hex(0x000000), 0); // 黑色文字
-        lv_obj_align(date_label, LV_ALIGN_TOP_LEFT, 10, 10); // 放在最顶部
+        lv_obj_align(date_label, LV_ALIGN_TOP_LEFT, 10, 4); // 放在最顶部
+        lv_obj_set_width(date_label, 150); // 增加宽度，确保完整显示中文日期
         Serial.println("创建日期标签成功");
     }
 
@@ -96,26 +93,9 @@ void TimeManager::init() {
         week_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_text_font(week_label, &lvgl_font_song_16, 0); // 16px字体
         lv_obj_set_style_text_color(week_label, lv_color_hex(0x000000), 0); // 黑色文字
-        lv_obj_align(week_label, LV_ALIGN_TOP_LEFT, 120, 10); // 放在日期标签右侧
+        lv_obj_align(week_label, LV_ALIGN_TOP_LEFT, 120, 4); // 放在日期标签右侧
+        lv_obj_set_width(week_label, 80); // 限制宽度
         Serial.println("创建星期标签成功");
-    }
-
-    // 创建农历标签
-    if (!lunar_label) {
-        lunar_label = lv_label_create(lv_scr_act());
-        lv_obj_set_style_text_font(lunar_label, &lvgl_font_song_16, 0); // 16px字体
-        lv_obj_set_style_text_color(lunar_label, lv_color_hex(0x000000), 0); // 黑色文字
-        lv_obj_align(lunar_label, LV_ALIGN_TOP_LEFT, 220, 10); // 放在星期标签右侧
-        Serial.println("创建农历标签成功");
-    }
-
-    // 创建WiFi状态图标
-    if (!wifi_status_icon) {
-        wifi_status_icon = lv_label_create(lv_scr_act());
-        lv_obj_set_style_text_font(wifi_status_icon, &lv_font_montserrat_24, 0); // 24px字体
-        lv_obj_set_style_text_color(wifi_status_icon, lv_color_hex(0x0000FF), 0); // 蓝色
-        lv_obj_align(wifi_status_icon, LV_ALIGN_TOP_RIGHT, -5, 10); // 右上角对齐，放在最顶部
-        Serial.println("创建WiFi状态图标成功");
     }
     
     // 初始化显示内容
@@ -137,16 +117,6 @@ void TimeManager::init() {
     if (week_label) {
         lv_label_set_text(week_label, "星期日");
         lv_obj_clear_flag(week_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
-    }
-    
-    if (lunar_label) {
-        lv_label_set_text(lunar_label, "农历正月初一");
-        lv_obj_clear_flag(lunar_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
-    }
-    
-    if (wifi_status_icon) {
-        lv_label_set_text(wifi_status_icon, "");
-        lv_obj_clear_flag(wifi_status_icon, LV_OBJ_FLAG_HIDDEN); // 确保图标可见
     }
     
     // 初始化时强制更新分钟显示
@@ -211,10 +181,10 @@ snprintf(hourMinuteStringBuff, sizeof(hourMinuteStringBuff), "%02d:%02d", curren
         lv_obj_clear_flag(hour_minute_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
     }
     
-    // 更新日期显示
+    // 更新日期显示 - 改进格式确保完整显示
     if (date_label) {
-        char dateStringBuff[15]; // 格式为 YYYY年MM月DD日
-        snprintf(dateStringBuff, sizeof(dateStringBuff), "%04d年%02d月%02d日", 
+        char dateStringBuff[15]; // 格式为 YYYY-MM-DD
+        snprintf(dateStringBuff, sizeof(dateStringBuff), "%04d-%02d-%02d", 
                  timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday);
         lv_label_set_text(date_label, dateStringBuff);
     }
@@ -224,14 +194,7 @@ snprintf(hourMinuteStringBuff, sizeof(hourMinuteStringBuff), "%02d:%02d", curren
         lv_label_set_text(week_label, weekDays[timeinfo.tm_wday]);
     }
     
-    // 更新WiFi状态
-    if (wifi_status_icon) {
-        if (WiFi.status() == WL_CONNECTED) {
-            lv_label_set_text(wifi_status_icon, ""); // 不显示WiFi图标
-        } else {
-            lv_label_set_text(wifi_status_icon, ""); // 不显示WiFi图标
-        }
-    }
+
     
     // 获取农历信息（如果有必要）
     // getlunar();
@@ -260,14 +223,7 @@ void TimeManager::updateSecondDisplay() {
         lv_obj_clear_flag(second_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
     }
     
-    // 更新WiFi状态
-    if (wifi_status_icon) {
-        if (WiFi.status() == WL_CONNECTED) {
-            lv_label_set_text(wifi_status_icon, ""); // 不显示WiFi图标
-        } else {
-            lv_label_set_text(wifi_status_icon, ""); // 不显示WiFi图标
-        }
-    }
+
 }
 
 /**

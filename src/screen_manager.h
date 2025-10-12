@@ -61,6 +61,8 @@ public:
     void showRandomMaoSelect();
     void showRandomToxicSoul();
     void showAPRSData();
+    void displayAstronautsDataFromFile();
+    void displayAPRSDataFromFile();
 };
 
 #endif // SCREEN_MANAGER_H

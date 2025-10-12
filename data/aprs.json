@@ -1,38 +1,23 @@
 {
-  "code": 200,
-  "msg": "success",
   "result": {
     "packets": [
       {
-        "callsign": "BI9ABC-15",
-        "timestamp": "2025-10-05 10:15:30",
-        "latitude": 34.2345,
-        "longitude": 108.7654,
-        "symbol": "[-",
-        "comment": "西安业余无线电协会活动",
-        "distance": 5.2
+        "callsign": "BH9BG-10",
+        "raw_data": "BH9BG-10>APDW17,TCPIP*,qAC,T2CS:!3412.00NI10854.97E#144.640MHz APRS-iGate#Rx 2025-10-08 22:35:43",
+        "timestamp": "2025-10-08 22:35:44"
       },
       {
-        "callsign": "BI9ABD-7",
-        "timestamp": "2025-10-05 09:42:15",
-        "latitude": 34.1234,
-        "longitude": 108.8765,
-        "symbol": ">-",
-        "comment": "移动中",
-        "distance": 3.8
+        "callsign": "BH9DMR-11",
+        "raw_data": "BH9DMR-11>ST1SUL,WIDE1-1,qAO,BH9FXK-10:`tV&lIUh9>\"5Y}=",
+        "timestamp": "2025-10-08 22:35:43"
       },
       {
-        "callsign": "BI9ABE-9",
-        "timestamp": "2025-10-05 08:30:45",
-        "latitude": 34.3456,
-        "longitude": 108.9876,
-        "symbol": "W-",
-        "comment": "气象监测站",
-        "distance": 8.5
+        "callsign": "BH9DX-10",
+        "raw_data": "BH9DX-10>APLRG1,TCPIP*,qAC,T2HAKATA:!L=114j\"D\"a  GLoRa APRS",
+        "timestamp": "2025-10-08 22:35:21"
       }
     ],
     "total": 3,
-    "server": "asia.aprs2.net",
-    "last_update": "2025-10-08 17:54:18"
+    "last_update": "2025-10-08 22:45:15"
   }
 }

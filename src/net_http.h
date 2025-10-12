@@ -24,6 +24,9 @@ extern unsigned long lastNewsUpdateTime;
 extern unsigned long lastIcibaUpdateTime;
 extern unsigned long lastAstronautsUpdateTime;
 
+extern bool forceRefreshWeather;
+extern bool forceRefreshNews;
+
 // 函数声明
 void connectToWiFi();
 void setupWiFi();
@@ -32,10 +35,17 @@ void getIcibaDailyInfo();
 void getCityWeater();
 void getNews();
 void getAstronautsInfo();
+int Http_Get_wthrcdn(void);
 
 // 获取APRS数据
 extern lv_obj_t* aprs_label;
 extern lv_obj_t* aprs_table;
 void showAPRSData();
+
+// 从文件加载并显示数据的函数声明
+  void net_displayWeatherDataFromFile();
+  void net_displayNewsDataFromFile();
+  void net_displayIcibaDataFromFile();
+  void net_displayAPRSDataFromFile();
 
 #endif // NET_HTTP_H

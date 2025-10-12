@@ -1,22 +1,27 @@
 {
+  "api": {
+    "key": "38c43566fe20217eab8108f8243b5a89"
+  },
+  "display": {
+    "brightness": 128,
+    "refresh_interval": 60000
+  },
+  "weather": {
+    "city_code": "101110101"
+  },
   "wifi": {
     "ssid": "wonder",
     "password": "unclesam"
   },
   "ntp": {
-    "server": "ntp.aliyun.com",
-    "timezone": 8,
-    "gmt_offset_sec": 28800,
-    "daylight_offset_sec": 0
+    "timezone": 8
   },
-  "api": {
-    "key": "38c43566fe20217eab8108f8243b5a89"
+  "hardware": {
+    "BUTTON_PIN": 18,
+    "LIGHT_SENSOR_PIN": 35,
+    "SCREEN_BRIGHTNESS_PIN": 22
   },
-  "weather": {
-    "city_code": "101110101",
-    "city_name": "西安",
-    "province": "陕西"
-  },
+  "button": {},
   "aprs": {
     "callsign": "BI9ABS",
     "passcode": "19129",
@@ -25,23 +30,11 @@
     "range_km": 10,
     "max_packets": 6
   },
-  "display": {
-    "screen_width": 320,
-    "screen_height": 480,
-    "auto_screen_switch_interval": 30000
-  },
-  "data_cache": {
-    "interval": 7200000
-  },
-  "sensors": {
-    "light_sensor_pin": 35,
-    "dark_threshold": 2000,
-    "very_dark_threshold": 500
-  },
-  "buttons": {
-    "button_pin": 18,
-    "debounce_delay": 50,
-    "short_press_threshold": 200,
-    "long_press_threshold": 1000
+  "other": {
+    "updateInterval": 1000,
+    "data_cache_interval": 7200000,
+    "DARK_THRESHOLD": 2000,
+    "VERY_DARK_THRESHOLD": 500,
+    "brightnessUpdateInterval": 200
   }
 }

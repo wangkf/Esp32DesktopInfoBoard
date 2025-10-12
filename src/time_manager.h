@@ -17,7 +17,6 @@ private:
     lv_obj_t* week_label;         // 星期几标签
     lv_obj_t* hour_minute_label;  // 时分钟标签
     lv_obj_t* second_label;       // 秒钟标签
-    lv_obj_t* wifi_status_icon;   // WiFi图标标签
     lv_obj_t* lunar_label;        // 农历标签
     
     // 时间变量
@@ -62,9 +61,6 @@ public:
     
     // 获取秒钟标签
     lv_obj_t* getSecondLabel();
-    
-    // 获取WiFi图标标签
-    lv_obj_t* getWifiIconLabel();
     
     // 设置强制更新分钟显示
     void setForceUpdateMinute(bool forceUpdate);

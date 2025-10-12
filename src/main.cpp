@@ -17,6 +17,10 @@
 #include "button_manager.h"
 #include "net_http.h"
 #include "weather_display.h"
+#include "display_manager.h"
+
+// 全局变量定义
+epd_rtc_data epd_rtc;
 
 // LED控制配置
 #define LED_CHANNEL    0       // LED通道
@@ -332,6 +336,7 @@ void initSystem() {
     DataManager::getInstance()->init();
     WeatherManager::getInstance()->init();
     ButtonManager::getInstance()->begin();
+    initDisplayManager();
     
     // 设置天气管理器的天气表格引用
     WeatherManager::getInstance()->setWeatherTable(weather_table);

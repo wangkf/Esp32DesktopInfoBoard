@@ -4,6 +4,14 @@
 #include "maoselect.h"
 #include "toxicsoul.h"
 #include "lvgl.h"
+#include "display_manager.h"
+#include <SPIFFS.h>
+#include <WiFi.h>
+#include <ArduinoJson.h>
+
+// 外部变量声明
+extern bool forceRefreshNews;
+extern bool forceRefreshWeather;
 
 // 定义单例实例
 ScreenManager* ScreenManager::instance = nullptr;
@@ -59,8 +67,13 @@ void ScreenManager::init() {
  * 隐藏所有屏幕元素
  */
 void ScreenManager::hideAllScreens() {
-    // 隐藏天气显示组件
-    hideWeatherDisplay();
+    Serial.println("隐藏所有屏幕元素");
+    
+    // 隐藏天气标签和天气显示组件
+    extern lv_obj_t* weather_label;
+    if (weather_label) {
+        lv_obj_add_flag(weather_label, LV_OBJ_FLAG_HIDDEN);
+    }
     
     // 隐藏天气表格
     extern lv_obj_t* weather_table;
@@ -68,11 +81,8 @@ void ScreenManager::hideAllScreens() {
         lv_obj_add_flag(weather_table, LV_OBJ_FLAG_HIDDEN);
     }
     
-    // 隐藏天气标签
-    extern lv_obj_t* weather_label;
-    if (weather_label) {
-        lv_obj_add_flag(weather_label, LV_OBJ_FLAG_HIDDEN);
-    }
+    // 调用WeatherDisplay的hide方法隐藏所有天气组件
+    weatherDisplay.hide();
     
     // 隐藏新闻标签
     extern lv_obj_t* news_label;
@@ -201,10 +211,22 @@ void ScreenManager::refreshCurrentScreenData() {
     // 根据当前屏幕状态刷新数据
     switch (currentScreen) {
         case WEATHER_SCREEN:
-            getCityWeater();
+            // 检查WiFi连接状态
+            if (WiFi.status() == WL_CONNECTED) {
+                // 从网络获取数据并写入文件
+                getCityWeater();
+            }
+            // 从文件加载并显示数据
+            displayWeatherDataFromFile();
             break;
         case NEWS_SCREEN:
-            getNews();
+            // 检查WiFi连接状态
+            if (WiFi.status() == WL_CONNECTED) {
+                // 从网络获取数据并写入文件
+                getNews();
+            }
+            // 从文件加载并显示数据
+            displayNewsDataFromFile();
             break;
         case MAO_SELECT_SCREEN:
             showRandomMaoSelect();
@@ -213,13 +235,31 @@ void ScreenManager::refreshCurrentScreenData() {
             showRandomToxicSoul();
             break;
         case ICBA_SCREEN:
-            getIcibaDailyInfo();
+            // 检查WiFi连接状态
+            if (WiFi.status() == WL_CONNECTED) {
+                // 从网络获取数据并写入文件
+                getIcibaDailyInfo();
+            }
+            // 从文件加载并显示数据
+            displayIcibaDataFromFile();
             break;
         case ASTRONAUTS_SCREEN:
-            getAstronautsInfo();
+            // 检查WiFi连接状态
+            if (WiFi.status() == WL_CONNECTED) {
+                // 从网络获取数据并写入文件
+                getAstronautsInfo();
+            }
+            // 从文件加载并显示数据
+            displayAstronautsDataFromFile();
             break;
         case APRS_SCREEN:
-            showAPRSData();
+            // 检查WiFi连接状态
+            if (WiFi.status() == WL_CONNECTED) {
+                // 从网络获取数据并写入文件
+                showAPRSData();
+            }
+            // 从文件加载并显示数据
+            displayAPRSDataFromFile();
             break;
     }
 }
@@ -230,14 +270,27 @@ void ScreenManager::refreshCurrentScreenData() {
 void ScreenManager::showWeatherScreen() {
     Serial.println("切换到天气屏幕");
     
+    // 确保隐藏新闻标签，防止内容重叠
+    extern lv_obj_t* news_label;
+    if (news_label) {
+        lv_obj_add_flag(news_label, LV_OBJ_FLAG_HIDDEN);
+    }
+    
     // 显示天气标签
     extern lv_obj_t* weather_label;
     if (weather_label) {
         lv_obj_clear_flag(weather_label, LV_OBJ_FLAG_HIDDEN);
     }
     
-    // 获取天气数据
-    getCityWeater();
+    // 首先尝试从文件显示天气数据
+    displayWeatherDataFromFile();
+    
+    // 如果没有缓存数据或需要强制刷新，则从网络获取数据
+    if (forceRefreshWeather || !SPIFFS.exists("/weather_data.json")) {
+        // 获取天气数据
+        getCityWeater();
+        forceRefreshWeather = false;
+    }
     
     // 显示天气图标和图表
     initWeatherDisplay();
@@ -267,8 +320,15 @@ void ScreenManager::showNewsScreen() {
         lv_obj_clear_flag(news_label, LV_OBJ_FLAG_HIDDEN);
     }
     
-    // 获取新闻数据
-    getNews();
+    // 首先尝试从文件显示新闻数据
+    displayNewsDataFromFile();
+    
+    // 如果没有缓存数据或需要强制刷新，则从网络获取数据
+    if (forceRefreshNews || !SPIFFS.exists("/news_data.json")) {
+        // 获取新闻数据
+        getNews();
+        forceRefreshNews = false;
+    }
     
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
@@ -336,8 +396,8 @@ void ScreenManager::showIcibaScreen() {
         lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN);
     }
     
-    // 获取金山词霸每日信息
-    getIcibaDailyInfo();
+    // 首先尝试从文件显示金山词霸数据
+    displayIcibaDataFromFile();
     
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
@@ -376,8 +436,24 @@ void ScreenManager::showAstronautsScreen() {
     // 确保宇航员标签可见
     lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN);
     
-    // 获取并显示宇航员信息
-    getAstronautsInfo();
+    // 首先尝试从文件显示宇航员数据
+    displayAstronautsDataFromFile();
+    
+    // 外部变量声明
+    extern unsigned long lastAstronautsUpdateTime;
+    
+    // 如果没有缓存数据或超过更新间隔，则从网络获取数据
+    const unsigned long ASTRONAUTS_UPDATE_INTERVAL = 24 * 60 * 60 * 1000; // 24小时
+    bool shouldUpdate = (millis() - lastAstronautsUpdateTime >= ASTRONAUTS_UPDATE_INTERVAL) || lastAstronautsUpdateTime == 0;
+    
+    // 检查WiFi连接状态
+    if (WiFi.status() == WL_CONNECTED && (shouldUpdate || !SPIFFS.exists("/astronauts.json"))) {
+        // 获取并显示宇航员信息
+        getAstronautsInfo();
+    } else if (!SPIFFS.exists("/astronauts.json")) {
+        // 如果没有缓存文件，显示提示信息
+        lv_label_set_text(astronauts_label, "暂无宇航员数据，请确保WiFi已连接以获取最新数据");
+    }
     
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
@@ -441,8 +517,19 @@ void ScreenManager::showAPRSScreen() {
     // 确保APRS表格可见
     lv_obj_clear_flag(aprs_table, LV_OBJ_FLAG_HIDDEN);
     
-    // 显示APRS数据
-    showAPRSData();
+    // 首先尝试从文件显示APRS数据
+    displayAPRSDataFromFile();
+    
+    // 如果没有缓存数据或者WiFi已连接，则从网络获取数据
+    if (!SPIFFS.exists("/aprs.json") && WiFi.status() == WL_CONNECTED) {
+        // 显示APRS数据
+        showAPRSData();
+    } else if (!SPIFFS.exists("/aprs.json")) {
+        // 如果没有缓存文件，显示提示信息
+        if (aprs_label) {
+            lv_label_set_text(aprs_label, "暂无APRS数据，请确保WiFi已连接以获取最新数据");
+        }
+    }
     
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
@@ -501,8 +588,149 @@ void ScreenManager::showRandomToxicSoul() {
 }
 
 /**
+ * 从文件显示宇航员数据
+ */
+void ScreenManager::displayAstronautsDataFromFile() {
+    Serial.println("尝试从文件加载宇航员数据");
+    extern lv_obj_t* astronauts_label;
+    
+    // 检查文件是否存在
+    if (SPIFFS.exists("/astronauts.json")) {
+      File file = SPIFFS.open("/astronauts.json", "r");
+        if (file) {
+            // 读取文件内容
+            String jsonString = file.readString();
+            file.close();
+            
+            // 解析JSON数据
+            DynamicJsonDocument doc(1024);
+            DeserializationError error = deserializeJson(doc, jsonString);
+            
+            if (!error) {
+                Serial.println("成功解析宇航员数据文件");
+                
+                // 构建显示内容
+                String displayText = "太空宇航员信息：\n\n";
+                
+                if (doc["number"].is<int>() && doc["people"].is<JsonArray>()) {
+                    int number = doc["number"];
+                    displayText += "当前太空总人数：" + String(number) + " 人\n\n";
+                    
+                    // 遍历所有宇航员
+                    for (JsonObject person : doc["people"].as<JsonArray>()) {
+                        if (person["name"].is<const char*>() && person["craft"].is<const char*>()) {
+                            const char* name = person["name"];
+                            const char* craft = person["craft"];
+                            displayText += "姓名：" + String(name) + "\n";
+                            displayText += "所在飞船：" + String(craft) + "\n\n";
+                        }
+                    }
+                }
+                
+                // 显示内容
+                if (astronauts_label && displayText.length() > 0) {
+                    lv_label_set_text(astronauts_label, displayText.c_str());
+                    Serial.println("成功显示文件中的宇航员数据");
+                }
+            } else {
+                Serial.println("解析宇航员数据文件失败");
+            }
+        } else {
+            Serial.println("无法打开宇航员数据文件");
+        }
+    } else {
+        Serial.println("宇航员数据文件不存在");
+    }
+}
+
+/**
+ * 从文件显示APRS数据
+ */
+void ScreenManager::displayAPRSDataFromFile() {
+    Serial.println("尝试从文件加载APRS数据");
+    extern lv_obj_t* aprs_label;
+    extern lv_obj_t* aprs_table;
+    
+    // 检查文件是否存在
+    if (SPIFFS.exists("/aprs.json")) {
+      File file = SPIFFS.open("/aprs.json", "r");
+        if (file) {
+            // 读取文件内容
+            String jsonString = file.readString();
+            file.close();
+            
+            // 解析JSON数据
+            DynamicJsonDocument doc(2048);
+            DeserializationError error = deserializeJson(doc, jsonString);
+            
+            if (!error) {
+                Serial.println("成功解析APRS数据文件");
+                
+                // 更新标签显示
+                if (aprs_label) {
+                    lv_label_set_text(aprs_label, "APRS数据（来自本地缓存）");
+                }
+                
+                // 处理表格显示
+                if (aprs_table) {
+                    // 设置表头
+                    lv_table_set_cell_value(aprs_table, 0, 0, "呼号");
+                    lv_table_set_cell_value(aprs_table, 0, 1, "信息");
+                    
+                    // 设置表头样式
+                    lv_table_add_cell_ctrl(aprs_table, 0, 0, LV_TABLE_CELL_CTRL_CUSTOM_1);
+                    lv_table_add_cell_ctrl(aprs_table, 0, 1, LV_TABLE_CELL_CTRL_CUSTOM_1);
+                    
+                    // 遍历APRS数据
+                    int row = 1;
+                    if (doc["packets"].is<JsonArray>()) {
+                        for (JsonObject packet : doc["packets"].as<JsonArray>()) {
+                            if (row >= APRS_MAX_PACKETS + 1) break; // 不超过表格最大行数
+                            
+                            // 获取呼号和信息
+                            const char* callsign = packet["callsign"].is<const char*>() ? packet["callsign"].as<const char*>() : "未知";
+                            const char* message = packet["message"].is<const char*>() ? packet["message"].as<const char*>() : "无信息";
+                            
+                            // 设置表格内容
+                            lv_table_set_cell_value(aprs_table, row, 0, callsign);
+                            lv_table_set_cell_value(aprs_table, row, 1, message);
+                            
+                            row++;
+                        }
+                    }
+                    
+                    // 如果没有数据，显示提示
+                    if (row == 1) {
+                        lv_table_set_cell_value(aprs_table, 1, 0, "暂无数据");
+                        lv_table_set_cell_value(aprs_table, 1, 1, "");
+                    }
+                }
+                
+                Serial.println("成功显示文件中的APRS数据");
+            } else {
+                Serial.println("解析APRS数据文件失败");
+                if (aprs_label) {
+                    lv_label_set_text(aprs_label, "本地APRS数据解析失败");
+                }
+            }
+        } else {
+            Serial.println("无法打开APRS数据文件");
+            if (aprs_label) {
+                lv_label_set_text(aprs_label, "无法打开本地APRS数据文件");
+            }
+        }
+    } else {
+        Serial.println("APRS数据文件不存在");
+        if (aprs_label) {
+            lv_label_set_text(aprs_label, "本地APRS数据文件不存在");
+        }
+    }
+}
+
+/**
  * 显示APRS数据
  */
 void ScreenManager::showAPRSData() {
-    // 实现代码将在net_http.cpp中
+    // 这个函数在net_http.cpp中有实现
+    Serial.println("尝试从网络获取APRS数据");
 }

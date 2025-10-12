@@ -1,33 +1,9 @@
 {
-  "code": 200,
-  "msg": "success",
   "result": {
-    "icba": [
-      {
-        "date": "2025-10-05",
-        "word": "perseverance",
-        "pronunciation": "[ˌpɜːsəˈvɪərəns]",
-        "translation": "n. 毅力，坚持不懈",
-        "sentence": "Success belongs to those who show perseverance in the face of difficulties.",
-        "sentence_translation": "成功属于那些在困难面前展现毅力的人。"
-      },
-      {
-        "date": "2025-10-04",
-        "word": "innovation",
-        "pronunciation": "[ˌɪnəˈveɪʃn]",
-        "translation": "n. 创新，革新",
-        "sentence": "Innovation is the key to staying competitive in today's fast-changing world.",
-        "sentence_translation": "创新是在当今快速变化的世界中保持竞争力的关键。"
-      },
-      {
-        "date": "2025-10-03",
-        "word": "resilience",
-        "pronunciation": "[rɪˈzɪliəns]",
-        "translation": "n. 恢复力，适应力",
-        "sentence": "The company's resilience was tested during the economic crisis, but it emerged stronger.",
-        "sentence_translation": "该公司的适应力在经济危机期间受到了考验，但它变得更强大了。"
-      }
-    ],
-    "last_updated": "2025-10-08 17:54:18"
-  }
+    "last_updated": "2025-10-08 19:01:10"
+  },
+  "tts": "https://staticedu-wps.cache.iciba.com/audio/1d7cd6b2a066cf8930e74617ceecd5d4.mp3",
+  "content": "Autumn kisses the earth with cold dew. ",
+  "note": "秋以寒露亲吻大地。",
+  "fenxiang_img": "https://staticedu-wps.cache.iciba.com/image/dcfd3842422f94d14dd39f1635f10359.png"
 }

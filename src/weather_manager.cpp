@@ -423,7 +423,7 @@ bool WeatherManager::updateWeatherData(const String& jsonData) {
     }
     
     // 解析JSON数据
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     DeserializationError error = deserializeJson(doc, jsonData);
     
     if (error) {

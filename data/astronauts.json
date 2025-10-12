@@ -5,90 +5,54 @@
     "astronauts": [
       {
         "name": "Oleg Kononenko",
-        "country": "国际",
-        "craft": "ISS",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "ISS"
       },
       {
         "name": "Nikolai Chub",
-        "country": "国际",
-        "craft": "ISS",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "ISS"
       },
       {
         "name": "Tracy Caldwell Dyson",
-        "country": "国际",
-        "craft": "ISS",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "ISS"
       },
       {
         "name": "Matthew Dominick",
-        "country": "国际",
-        "craft": "ISS",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "ISS"
       },
       {
         "name": "Michael Barratt",
-        "country": "国际",
-        "craft": "ISS",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "ISS"
       },
       {
         "name": "Jeanette Epps",
-        "country": "国际",
-        "craft": "ISS",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "ISS"
       },
       {
         "name": "Alexander Grebenkin",
-        "country": "国际",
-        "craft": "ISS",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "ISS"
       },
       {
         "name": "Butch Wilmore",
-        "country": "国际",
-        "craft": "ISS",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "ISS"
       },
       {
         "name": "Sunita Williams",
-        "country": "国际",
-        "craft": "ISS",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "ISS"
       },
       {
         "name": "Li Guangsu",
-        "country": "国际",
-        "craft": "Tiangong",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "Tiangong"
       },
       {
         "name": "Li Cong",
-        "country": "国际",
-        "craft": "Tiangong",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "Tiangong"
       },
       {
         "name": "Ye Guangfu",
-        "country": "国际",
-        "craft": "Tiangong",
-        "days_in_space": 0,
-        "mission": "未知任务"
+        "craft": "Tiangong"
       }
     ],
     "total": 12,
-    "last_updated": "2025-10-08 17:54:18"
+    "last_updated": "2025-10-08 19:01:10"
   }
 }

@@ -4,6 +4,9 @@
 #include <extra/libs/png/lv_png.h>
 #include <extra/widgets/chart/lv_chart.h>
 #include "weather_display.h"
+#include "FS.h"
+#include "SPIFFS.h"
+#include <WiFi.h>
 
 // 天气类型与描述的映射
 const char* weatherTypeStrings[] = {
@@ -36,6 +39,20 @@ WeatherDisplay::WeatherDisplay() {
     chart.chart = nullptr;
     chart.high_temp_series = nullptr;
     chart.low_temp_series = nullptr;
+    
+    // 当前天气信息组件
+    current_weather_container = nullptr;
+    current_temp_label = nullptr;
+    current_weather_desc_label = nullptr;
+    current_weather_icon = nullptr;
+    
+    // 天气详情标签
+    detail_humidity_label = nullptr;
+    detail_wind_label = nullptr;
+    detail_limit_label = nullptr;
+    
+    // 天气建议标签
+    weather_suggestion_label = nullptr;
 }
 
 WeatherDisplay::~WeatherDisplay() {
@@ -50,9 +67,71 @@ void WeatherDisplay::initialize() {
     // 初始化PNG解码器
     lv_png_init();
     
-    // 创建4天的天气图标显示区域
+    // 创建当前天气信息容器
+    current_weather_container = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(current_weather_container, screenWidth - 20, 120);
+    lv_obj_align(current_weather_container, LV_ALIGN_TOP_MID, 0, 90);
+    lv_obj_set_style_bg_color(current_weather_container, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_bg_opa(current_weather_container, 80, 0);
+    lv_obj_set_style_border_width(current_weather_container, 1, 0);
+    lv_obj_set_style_border_color(current_weather_container, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_radius(current_weather_container, 10, 0);
+    
+    // 创建当前温度标签
+    current_temp_label = lv_label_create(current_weather_container);
+    lv_obj_set_style_text_font(current_temp_label, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(current_temp_label, lv_color_hex(0xFF6600), 0);
+    lv_obj_align(current_temp_label, LV_ALIGN_LEFT_MID, 20, 0);
+    
+    // 创建当前天气描述标签
+    current_weather_desc_label = lv_label_create(current_weather_container);
+    lv_obj_set_style_text_font(current_weather_desc_label, &lvgl_font_song_16, 0);
+    lv_obj_set_style_text_color(current_weather_desc_label, lv_color_hex(0x333333), 0);
+    lv_obj_align(current_weather_desc_label, LV_ALIGN_TOP_MID, 0, 20);
+    
+    // 创建当前天气图标
+    current_weather_icon = lv_img_create(current_weather_container);
+    lv_obj_set_size(current_weather_icon, 80, 80);
+    lv_obj_align(current_weather_icon, LV_ALIGN_RIGHT_MID, -20, 0);
+    
+    // 创建天气详情区域
+    lv_obj_t* detail_container = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(detail_container, screenWidth - 20, 80);
+    lv_obj_align(detail_container, LV_ALIGN_TOP_MID, 0, 220);
+    lv_obj_set_style_bg_color(detail_container, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_bg_opa(detail_container, 80, 0);
+    lv_obj_set_style_border_width(detail_container, 1, 0);
+    lv_obj_set_style_border_color(detail_container, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_radius(detail_container, 10, 0);
+    
+    // 创建湿度标签
+    detail_humidity_label = lv_label_create(detail_container);
+    lv_obj_set_style_text_font(detail_humidity_label, &lvgl_font_song_16, 0);
+    lv_obj_set_style_text_color(detail_humidity_label, lv_color_hex(0x333333), 0);
+    lv_obj_align(detail_humidity_label, LV_ALIGN_LEFT_MID, 15, 0);
+    
+    // 创建风力标签
+    detail_wind_label = lv_label_create(detail_container);
+    lv_obj_set_style_text_font(detail_wind_label, &lvgl_font_song_16, 0);
+    lv_obj_set_style_text_color(detail_wind_label, lv_color_hex(0x333333), 0);
+    lv_obj_align(detail_wind_label, LV_ALIGN_CENTER, 0, 0);
+    
+    // 创建限行标签
+    detail_limit_label = lv_label_create(detail_container);
+    lv_obj_set_style_text_font(detail_limit_label, &lvgl_font_song_16, 0);
+    lv_obj_set_style_text_color(detail_limit_label, lv_color_hex(0xFF0000), 0);
+    lv_obj_align(detail_limit_label, LV_ALIGN_RIGHT_MID, -15, 0);
+    
+    // 创建天气建议标签
+    weather_suggestion_label = lv_label_create(lv_scr_act());
+    lv_obj_set_style_text_font(weather_suggestion_label, &lvgl_font_song_16, 0);
+    lv_obj_set_style_text_color(weather_suggestion_label, lv_color_hex(0x333333), 0);
+    lv_obj_set_width(weather_suggestion_label, screenWidth - 20);
+    lv_obj_set_style_text_align(weather_suggestion_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(weather_suggestion_label, LV_ALIGN_TOP_MID, 0, 310);
+    
+    // 创建4天的天气预报区域
     int iconWidth = screenWidth / 4;
-    int iconHeight = 100;
     
     for (int i = 0; i < 4; i++) {
         // 创建日期标签
@@ -60,27 +139,28 @@ void WeatherDisplay::initialize() {
         lv_obj_set_style_text_font(items[i].date_label, &lvgl_font_song_16, 0);
         lv_obj_set_style_text_color(items[i].date_label, lv_color_hex(0x333333), 0);
         lv_obj_align(items[i].date_label, LV_ALIGN_TOP_MID, 
-                    (i - 1.5f) * iconWidth, 150);
+                    (i - 1.5f) * iconWidth, 340);
+        lv_obj_set_style_text_align(items[i].date_label, LV_TEXT_ALIGN_CENTER, 0);
         
         // 创建天气图标
         items[i].icon = lv_img_create(lv_scr_act());
-        lv_obj_set_size(items[i].icon, 60, 60);
+        lv_obj_set_size(items[i].icon, 50, 50);
         lv_obj_align(items[i].icon, LV_ALIGN_TOP_MID, 
-                    (i - 1.5f) * iconWidth, 180);
+                    (i - 1.5f) * iconWidth, 370);
         
         // 创建最高温度标签
         items[i].high_temp_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_text_font(items[i].high_temp_label, &lvgl_font_song_16, 0);
         lv_obj_set_style_text_color(items[i].high_temp_label, lv_color_hex(0xFF6600), 0); // 橙色文字
         lv_obj_align(items[i].high_temp_label, LV_ALIGN_TOP_MID, 
-                    (i - 1.5f) * iconWidth, 250);
+                    (i - 1.5f) * iconWidth - 15, 430);
         
         // 创建最低温度标签
         items[i].low_temp_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_text_font(items[i].low_temp_label, &lvgl_font_song_16, 0);
         lv_obj_set_style_text_color(items[i].low_temp_label, lv_color_hex(0x0066CC), 0); // 蓝色文字
         lv_obj_align(items[i].low_temp_label, LV_ALIGN_TOP_MID, 
-                    (i - 1.5f) * iconWidth, 305);
+                    (i - 1.5f) * iconWidth + 15, 430);
         
         // 默认隐藏所有组件
         lv_obj_add_flag(items[i].date_label, LV_OBJ_FLAG_HIDDEN);
@@ -89,61 +169,151 @@ void WeatherDisplay::initialize() {
         lv_obj_add_flag(items[i].low_temp_label, LV_OBJ_FLAG_HIDDEN);
     }
     
-    // 创建气温趋势图表，使其顶部挨着日期标签底部，宽度与屏幕一致
-    chart.chart = lv_chart_create(lv_scr_act());
-    lv_obj_set_size(chart.chart, screenWidth-80, 160); // 折线图宽度与屏幕宽度保持一致
-    lv_obj_align(chart.chart, LV_ALIGN_TOP_MID, 0, 310); // 调整Y坐标使其顶部挨着日期标签底部
-    
-    // 配置图表样式
-    lv_chart_set_type(chart.chart, LV_CHART_TYPE_LINE);
-    lv_chart_set_range(chart.chart, LV_CHART_AXIS_PRIMARY_Y, -10, 40);
-    
-    // 禁用背景参考线和网格
-    lv_chart_set_div_line_count(chart.chart, 0, 0);
-    
-    // 移除轴标签和刻度
-    lv_obj_set_style_text_opa(chart.chart, 0, LV_PART_ANY);
-    
-    // 设置图表背景为透明
-    lv_obj_set_style_bg_opa(chart.chart, 0, 0);
-    
-    // 设置图表边框为透明
-    lv_obj_set_style_border_opa(chart.chart, 0, 0);
-    
-    // 启用节点显示
-    lv_obj_set_style_size(chart.chart, 4, LV_PART_INDICATOR); // 设置节点大小
-    
-    // 创建最高温度和最低温度数据系列
-    chart.high_temp_series = lv_chart_add_series(chart.chart, lv_color_hex(0xFF6600), LV_CHART_AXIS_PRIMARY_Y);
-    chart.low_temp_series = lv_chart_add_series(chart.chart, lv_color_hex(0x0066CC), LV_CHART_AXIS_PRIMARY_Y);
-    
-    // 隐藏图例（左上方的色块）- 使用LVGL 8.3.7兼容的方法
-    lv_obj_t * legend = lv_obj_get_child(chart.chart, -1);
-    if (legend) {
-      lv_obj_add_flag(legend, LV_OBJ_FLAG_HIDDEN);
-    }
-    
-    // 初始化温度数据数组
-    for (int i = 0; i < 4; i++) {
-        chart.temp_high_values[i] = 0;
-        chart.temp_low_values[i] = 0;
-    }
-    
-    // 默认隐藏图表
-    lv_obj_add_flag(chart.chart, LV_OBJ_FLAG_HIDDEN);
+    // 隐藏所有新增组件
+    lv_obj_add_flag(current_weather_container, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(current_temp_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(current_weather_desc_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(current_weather_icon, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(detail_container, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(detail_humidity_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(detail_wind_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(detail_limit_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(weather_suggestion_label, LV_OBJ_FLAG_HIDDEN);
     
     // 标记为已初始化
     initialized = true;
 }
 
-void WeatherDisplay::updateWeatherData(const char* weatherJson) {
-    // 这里可以实现从JSON解析天气数据的逻辑
-    // 目前这个功能已经在net_http.cpp中实现
+void WeatherDisplay::updateWeatherData(bool shouldUpdate) {
+    // 仅从本地文件加载数据，不再直接调用网络请求
+    loadWeatherDataFromFile();
+}
+
+void WeatherDisplay::loadWeatherDataFromFile() {
+    Serial.println("尝试从文件加载天气数据");
+    
+    // 检查文件是否存在
+    if (SPIFFS.exists("/weather.json")) {
+      File file = SPIFFS.open("/weather.json", "r");
+        
+        if (file) {
+            // 读取文件内容
+            String jsonString = file.readString();
+            file.close();
+            
+            // 解析JSON数据
+            DynamicJsonDocument doc(4096);
+            DeserializationError error = deserializeJson(doc, jsonString);
+            
+            if (!error) {
+                Serial.println("成功解析天气数据文件");
+                
+                // 更新当前天气信息
+                if (doc["current"].is<JsonObject>()) {
+                    JsonObject current = doc["current"];
+                    
+                    // 处理当前天气数据
+                    if (current["temp"].is<float>()) {
+                        char tempStr[10];
+                        sprintf(tempStr, "%.1f°", current["temp"].as<float>());
+                        if (current_temp_label) {
+                            lv_label_set_text(current_temp_label, tempStr);
+                        }
+                    }
+                    
+                    if (current["humidity"].is<int>()) {
+                        char humidityStr[20];
+                        sprintf(humidityStr, "湿度: %d%%", current["humidity"].as<int>());
+                        if (detail_humidity_label) {
+                            lv_label_set_text(detail_humidity_label, humidityStr);
+                        }
+                    }
+                    
+                    if (current["wind_speed"].is<float>()) {
+                        char windStr[20];
+                        sprintf(windStr, "风速: %.1f km/h", current["wind_speed"].as<float>());
+                        if (detail_wind_label) {
+                            lv_label_set_text(detail_wind_label, windStr);
+                        }
+                    }
+                    
+                    if (current["condition"].is<JsonObject>()) {
+                        JsonObject condition = current["condition"];
+                        if (condition["text"].is<const char*>()) {
+                            if (current_weather_desc_label) {
+                                lv_label_set_text(current_weather_desc_label, condition["text"].as<const char*>());
+                            }
+                        }
+                    }
+                }
+                
+                // 更新每日天气预报
+                if (doc["forecast"].is<JsonObject>()) {
+                    JsonObject forecast = doc["forecast"];
+                    if (forecast["forecastday"].is<JsonArray>()) {
+                        JsonArray forecastday = forecast["forecastday"];
+                        
+                        // 遍历每日天气预报
+                        for (int i = 0; i < forecastday.size() && i < 4; i++) {
+                            JsonObject day = forecastday[i];
+                            
+                            // 处理温度用于图表
+                            if (day["day"].is<JsonObject>()) {
+                                JsonObject dayWeather = day["day"];
+                                if (dayWeather["maxtemp_c"].is<float>()) {
+                                    chart.temp_high_values[i] = static_cast<int>(dayWeather["maxtemp_c"].as<float>());
+                                }
+                                if (dayWeather["mintemp_c"].is<float>()) {
+                                    chart.temp_low_values[i] = static_cast<int>(dayWeather["mintemp_c"].as<float>());
+                                }
+                            }
+                        }
+                        
+                        // 刷新图表
+                        if (chart.chart != nullptr) {
+                            // 更新图表数据点
+                            if (chart.high_temp_series && chart.low_temp_series) {
+                                for (int i = 0; i < 4; i++) {
+                                    chart.high_temp_series->x_points[i] = chart.temp_high_values[i];
+                                    chart.low_temp_series->x_points[i] = chart.temp_low_values[i];
+                                }
+                            }
+                            lv_chart_refresh(chart.chart);
+                        }
+                    }
+                }
+                
+                Serial.println("成功显示文件中的天气数据");
+            } else {
+                Serial.print("解析天气数据文件失败: ");
+                Serial.println(error.c_str());
+                
+                // 显示解析失败信息
+                if (current_temp_label != nullptr) {
+                    lv_label_set_text(current_temp_label, "天气数据解析失败");
+                }
+            }
+        } else {
+            Serial.println("无法打开天气数据文件");
+            
+            // 显示无法打开文件信息
+            if (current_temp_label != nullptr) {
+                lv_label_set_text(current_temp_label, "无法打开天气数据文件");
+            }
+        }
+    } else {
+        Serial.println("天气数据文件不存在");
+        
+        // 显示文件不存在信息
+        if (current_temp_label != nullptr) {
+            lv_label_set_text(current_temp_label, "天气数据文件不存在");
+        }
+    }
 }
 
 void WeatherDisplay::show() {
     if (!initialized) {
-        return;
+        initialize();
     }
     
     // 隐藏原来的天气表格
@@ -151,16 +321,49 @@ void WeatherDisplay::show() {
         lv_obj_add_flag(weather_table, LV_OBJ_FLAG_HIDDEN);
     }
     
-    // 显示所有天气图标项目
+    // 显示所有组件
+    lv_obj_clear_flag(current_weather_container, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(current_temp_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(current_weather_desc_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(current_weather_icon, LV_OBJ_FLAG_HIDDEN);
+    
+    // 找到并显示天气详情容器
+    if (current_weather_container) {
+        lv_obj_t* detail_container = lv_obj_get_child(current_weather_container->parent, 1);
+        if (detail_container) {
+            lv_obj_clear_flag(detail_container, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+    
+    // 显示天气详情标签
+    lv_obj_clear_flag(detail_humidity_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(detail_wind_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(detail_limit_label, LV_OBJ_FLAG_HIDDEN);
+    
+    // 显示天气建议标签
+    lv_obj_clear_flag(weather_suggestion_label, LV_OBJ_FLAG_HIDDEN);
+    
+    // 显示4天天气预报
     for (int i = 0; i < 4; i++) {
         lv_obj_clear_flag(items[i].date_label, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(items[i].icon, LV_OBJ_FLAG_HIDDEN);
-        // 显示日期下方的温度标签
         lv_obj_clear_flag(items[i].high_temp_label, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(items[i].low_temp_label, LV_OBJ_FLAG_HIDDEN);
     }
-    // 显示图表
-    lv_obj_clear_flag(chart.chart, LV_OBJ_FLAG_HIDDEN);
+    
+    // 显示图表（如果存在）
+    if (chart.chart) {
+        // 更新图表数据
+        for (int i = 0; i < 4; i++) {
+            if (chart.high_temp_series && chart.low_temp_series) {
+                chart.high_temp_series->x_points[i] = chart.temp_high_values[i];
+                chart.low_temp_series->x_points[i] = chart.temp_low_values[i];
+            }
+        }
+        // 刷新图表
+        lv_chart_refresh(chart.chart);
+        lv_obj_clear_flag(chart.chart, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 void WeatherDisplay::hide() {
@@ -168,20 +371,95 @@ void WeatherDisplay::hide() {
         return;
     }
     
-    // 隐藏所有天气图标项目
+    // 隐藏所有组件
+    lv_obj_add_flag(current_weather_container, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(current_temp_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(current_weather_desc_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(current_weather_icon, LV_OBJ_FLAG_HIDDEN);
+    
+    // 找到并隐藏天气详情容器
+    if (current_weather_container) {
+        lv_obj_t* detail_container = lv_obj_get_child(current_weather_container->parent, 1);
+        if (detail_container) {
+            lv_obj_add_flag(detail_container, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+    
+    // 隐藏天气详情标签
+    lv_obj_add_flag(detail_humidity_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(detail_wind_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(detail_limit_label, LV_OBJ_FLAG_HIDDEN);
+    
+    // 隐藏天气建议标签
+    lv_obj_add_flag(weather_suggestion_label, LV_OBJ_FLAG_HIDDEN);
+    
+    // 隐藏4天天气预报
     for (int i = 0; i < 4; i++) {
         lv_obj_add_flag(items[i].date_label, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(items[i].icon, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(items[i].high_temp_label, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(items[i].low_temp_label, LV_OBJ_FLAG_HIDDEN);
     }
-    
-    // 隐藏图表
-    lv_obj_add_flag(chart.chart, LV_OBJ_FLAG_HIDDEN);
 }
 
 bool WeatherDisplay::isInitialized() const {
     return initialized;
+}
+
+void WeatherDisplay::setDetailLimit(const char* text, lv_color_t color) {
+    if (detail_limit_label && text) {
+        lv_label_set_text(detail_limit_label, text);
+        lv_obj_set_style_text_color(detail_limit_label, color, 0);
+    }
+}
+
+void WeatherDisplay::setWeatherSuggestion(const char* text) {
+    if (weather_suggestion_label && text) {
+        lv_label_set_text(weather_suggestion_label, text);
+    }
+}
+
+void WeatherDisplay::setDetailHumidity(const char* text) {
+    if (detail_humidity_label && text) {
+        lv_label_set_text(detail_humidity_label, text);
+    }
+}
+
+void WeatherDisplay::setDetailWind(const char* text) {
+    if (detail_wind_label && text) {
+        lv_label_set_text(detail_wind_label, text);
+    }
+}
+
+void WeatherDisplay::setCurrentWeatherIcon(const char* iconPath) {
+    if (current_weather_icon && iconPath) {
+        lv_img_set_src(current_weather_icon, iconPath);
+    }
+}
+
+void WeatherDisplay::setCurrentWeatherDesc(const char* text, lv_color_t color) {
+    if (current_weather_desc_label && text) {
+        lv_label_set_text(current_weather_desc_label, text);
+        lv_obj_set_style_text_color(current_weather_desc_label, color, 0);
+    }
+}
+
+void WeatherDisplay::setCurrentWeatherDescText(const char* text) {
+    if (current_weather_desc_label && text) {
+        lv_label_set_text(current_weather_desc_label, text);
+    }
+}
+
+void WeatherDisplay::setCurrentWeatherDescColor(lv_color_t color) {
+    if (current_weather_desc_label) {
+        lv_obj_set_style_text_color(current_weather_desc_label, color, 0);
+    }
+}
+
+void WeatherDisplay::setCurrentTempLabel(const char* text) {
+    if (current_temp_label && text) {
+        lv_label_set_text(current_temp_label, text);
+    }
 }
 
 // 定义全局天气显示对象
@@ -337,89 +615,8 @@ void refreshWeatherDisplay() {
         return;
     }
     
-    // 重新设置图表数据点数量，这会自动清除之前的数据
-    lv_chart_set_point_count(weatherDisplay.chart.chart, 4);
-    
-    // 使用lv_chart_set_next_value来设置数据，确保日期和折线正确对应
-    for (int i = 0; i < 4; i++) {
-        lv_chart_set_next_value(weatherDisplay.chart.chart, weatherDisplay.chart.high_temp_series, weatherDisplay.chart.temp_high_values[i]);
-        lv_chart_set_next_value(weatherDisplay.chart.chart, weatherDisplay.chart.low_temp_series, weatherDisplay.chart.temp_low_values[i]);
-    }
-    
-    // 刷新图表显示
-    lv_chart_refresh(weatherDisplay.chart.chart);
-
-    // 在图表上显示温度标签
-    // 先删除之前的温度标签（如果存在）
-    lv_obj_clean(weatherDisplay.chart.chart);
-    
-    // 重新添加数据系列（因为我们清除了图表）
-    weatherDisplay.chart.high_temp_series = lv_chart_add_series(weatherDisplay.chart.chart, lv_color_hex(0xFF6600), LV_CHART_AXIS_PRIMARY_Y);
-    weatherDisplay.chart.low_temp_series = lv_chart_add_series(weatherDisplay.chart.chart, lv_color_hex(0x0066CC), LV_CHART_AXIS_PRIMARY_Y);
-    
-    // 隐藏图例（左上方的色块）- 使用LVGL 8.3.7兼容的方法
-    lv_obj_t * legend = lv_obj_get_child(weatherDisplay.chart.chart, -1);
-    if (legend) {
-      lv_obj_add_flag(legend, LV_OBJ_FLAG_HIDDEN);
-    }
-    
-    // 重新设置数据
-    for (int i = 0; i < 4; i++) {
-        lv_chart_set_next_value(weatherDisplay.chart.chart, weatherDisplay.chart.high_temp_series, weatherDisplay.chart.temp_high_values[i]);
-        lv_chart_set_next_value(weatherDisplay.chart.chart, weatherDisplay.chart.low_temp_series, weatherDisplay.chart.temp_low_values[i]);
-    }
-    
-    // 获取图表尺寸和位置信息来计算节点位置
-    lv_coord_t x_ofs = lv_obj_get_x(weatherDisplay.chart.chart);
-    lv_coord_t y_ofs = lv_obj_get_y(weatherDisplay.chart.chart);
-    lv_coord_t w = lv_obj_get_width(weatherDisplay.chart.chart);
-    
-    // 手动计算每个点的位置并创建标签
-    for (int i = 0; i < 4; i++) {
-        // 计算X坐标（均匀分布在图表宽度上）
-        lv_coord_t x = (w / 3) * i;
-        
-        // 计算Y坐标（根据温度值映射到图表高度）
-        lv_coord_t chart_h = lv_obj_get_height(weatherDisplay.chart.chart);
-        int temp_range = 40 - (-10); // 温度范围：-10℃到40℃
-        
-        // 最高温度Y坐标（温度越高，Y值越小，因为图表Y轴是从上到下递增）
-        lv_coord_t high_y = chart_h - ((weatherDisplay.chart.temp_high_values[i] - (-10)) * chart_h / temp_range);
-        
-        // 最低温度Y坐标
-        lv_coord_t low_y = chart_h - ((weatherDisplay.chart.temp_low_values[i] - (-10)) * chart_h / temp_range);
-        
-        // 创建最高温度标签，确保完整显示（使用中文字体）
-        char high_temp_str[6];
-        sprintf(high_temp_str, "%d℃", weatherDisplay.chart.temp_high_values[i]);
-        lv_obj_t* high_temp_label = lv_label_create(weatherDisplay.chart.chart);
-        lv_label_set_text(high_temp_label, high_temp_str);
-        // 使用项目中可用的中文字体显示温度标签
-        lv_obj_set_style_text_font(high_temp_label, &lvgl_font_song_16, 0);
-        lv_obj_set_style_text_color(high_temp_label, lv_color_hex(0xFF6600), 0);
-        // 设置标签宽度，确保完整显示温度值
-        lv_obj_set_width(high_temp_label, 40);
-        // 使用文本样式设置对齐方式
-        lv_obj_set_style_text_align(high_temp_label, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_align(high_temp_label, LV_ALIGN_TOP_LEFT, x - 20, high_y - 25);
-        
-        // 创建最低温度标签，确保完整显示（使用中文字体）
-        char low_temp_str[6];
-        sprintf(low_temp_str, "%d℃", weatherDisplay.chart.temp_low_values[i]);
-        lv_obj_t* low_temp_label = lv_label_create(weatherDisplay.chart.chart);
-        lv_label_set_text(low_temp_label, low_temp_str);
-        // 使用项目中可用的中文字体显示温度标签
-        lv_obj_set_style_text_font(low_temp_label, &lvgl_font_song_16, 0);
-        lv_obj_set_style_text_color(low_temp_label, lv_color_hex(0x0066CC), 0);
-        // 设置标签宽度，确保完整显示温度值
-        lv_obj_set_width(low_temp_label, 40);
-        // 使用文本样式设置对齐方式
-        lv_obj_set_style_text_align(low_temp_label, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_align(low_temp_label, LV_ALIGN_TOP_LEFT, x - 20, low_y + 5);
-    }
-
-    // 显示所有组件
-    showWeatherDisplay();
+    // 显示所有新的UI组件
+    weatherDisplay.show();
 }
 
 /**
@@ -443,8 +640,6 @@ void showWeatherDisplay() {
         lv_obj_clear_flag(weatherDisplay.items[i].high_temp_label, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(weatherDisplay.items[i].low_temp_label, LV_OBJ_FLAG_HIDDEN);
     }
-    // 显示图表
-    lv_obj_clear_flag(weatherDisplay.chart.chart, LV_OBJ_FLAG_HIDDEN);
 }
 
 /**
@@ -462,7 +657,4 @@ void hideWeatherDisplay() {
         lv_obj_add_flag(weatherDisplay.items[i].high_temp_label, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(weatherDisplay.items[i].low_temp_label, LV_OBJ_FLAG_HIDDEN);
     }
-    
-    // 隐藏图表
-    lv_obj_add_flag(weatherDisplay.chart.chart, LV_OBJ_FLAG_HIDDEN);
 }

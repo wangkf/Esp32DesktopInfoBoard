@@ -4,6 +4,32 @@
 // 引入必要的头文件
 #include <Arduino.h>
 
+// 天气数据结构体定义
+typedef struct {
+  char city[30];          // 城市名称
+  char date[10];          // 日期
+  char time[10];          // 时间
+  int Weather_Tmp_Real;   // 实时温度
+  int Weather_Tmp_High;   // 最高温度
+  int Weather_Tmp_Low;    // 最低温度
+  char Wind_Direction[30];// 风向
+  char Wind_Power[20];    // 风力
+  char humidity[10];      // 湿度
+  char ys[60];            // 预警信息
+  char fs[60];            // 防晒信息
+  char limitnumber[10];   // 限行信息
+  char Weather_Type[30];  // 天气类型描述
+  int Weather_TypeCode;   // 天气类型代码
+  char citycode[20];      // 城市代码
+  int day_code[5][2];     // 白天天气代码
+  int night_code[5][2];   // 夜晚天气代码
+  int tmp_max_data[5][2]; // 最高温度数据
+  int tmp_min_data[5][2]; // 最低温度数据
+  char Weather_data[5][20]; // 日期数据
+} epd_rtc_data;
+
+extern epd_rtc_data epd_rtc;
+
 // WiFi配置信息
 #define WIFI_SSID      "wonder"      // 请修改为您的WiFi名称
 #define WIFI_PASSWORD  "unclesam"  // 请修改为您的WiFi密码

@@ -1,0 +1,38 @@
+{
+  "code": 200,
+  "msg": "success",
+  "result": {
+    "packets": [
+      {
+        "callsign": "BI9ABC-15",
+        "timestamp": "2025-10-05 10:15:30",
+        "latitude": 34.2345,
+        "longitude": 108.7654,
+        "symbol": "[-",
+        "comment": "西安业余无线电协会活动",
+        "distance": 5.2
+      },
+      {
+        "callsign": "BI9ABD-7",
+        "timestamp": "2025-10-05 09:42:15",
+        "latitude": 34.1234,
+        "longitude": 108.8765,
+        "symbol": ">-",
+        "comment": "移动中",
+        "distance": 3.8
+      },
+      {
+        "callsign": "BI9ABE-9",
+        "timestamp": "2025-10-05 08:30:45",
+        "latitude": 34.3456,
+        "longitude": 108.9876,
+        "symbol": "W-",
+        "comment": "气象监测站",
+        "distance": 8.5
+      }
+    ],
+    "total": 3,
+    "server": "asia.aprs2.net",
+    "last_update": "2025-10-08 17:54:18"
+  }
+}

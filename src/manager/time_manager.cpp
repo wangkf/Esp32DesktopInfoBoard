@@ -66,6 +66,7 @@ void TimeManager::init() {
         lv_obj_set_style_text_color(hour_minute_label, lv_color_hex(0x006400), 0); // 深绿色
         lv_obj_align(hour_minute_label, LV_ALIGN_TOP_LEFT, 2, 20); // 位置：左上角对齐，x偏移5，y偏移30
         lv_label_set_text(hour_minute_label, "--:--");
+        lv_label_set_long_mode(hour_minute_label, LV_LABEL_LONG_WRAP);
     }
     
     // === 秒标签（second_label）=== 位置：时分标签右侧中间对齐，x偏移5，y偏移0
@@ -75,6 +76,7 @@ void TimeManager::init() {
         lv_obj_set_style_text_color(second_label, lv_color_hex(0xFF0000), 0); // 红色
         lv_obj_align_to(second_label, hour_minute_label, LV_ALIGN_OUT_RIGHT_MID, 2, 0); // 位置：时分标签右侧中间对齐，x偏移5，y偏移0
         lv_label_set_text(second_label, "--");
+        lv_label_set_long_mode(second_label, LV_LABEL_LONG_WRAP);
     }
     
     // === 日期标签（date_label）=== 位置：顶部中间对齐，x偏移0，y偏移2
@@ -85,6 +87,7 @@ void TimeManager::init() {
         lv_obj_align(date_label, LV_ALIGN_TOP_LEFT, 0, 2); // 位置：顶部中间对齐，x偏移0，y偏移2
         lv_obj_set_width(date_label, 120); // 设置足够的宽度确保显示完整
         lv_label_set_text(date_label, "2023年01月01日");
+        lv_label_set_long_mode(date_label, LV_LABEL_LONG_WRAP);
     }
     
     // === 星期标签（weekday_label）=== 位置：顶部中间对齐，x偏移0，y偏移22
@@ -94,6 +97,7 @@ void TimeManager::init() {
         lv_obj_set_style_text_color(weekday_label, lv_color_hex(0x0000FF), 0); // 蓝色
         lv_obj_align(weekday_label, LV_ALIGN_TOP_LEFT, 120, 2); // 位置：顶部中间对齐，x偏移0，y偏移22
         lv_label_set_text(weekday_label, "星期日");
+        lv_label_set_long_mode(weekday_label, LV_LABEL_LONG_WRAP);
     }
     
     // === 状态标签（status_label）=== 位置：星期标签右侧，延伸到最右边
@@ -118,14 +122,27 @@ void TimeManager::init() {
 void TimeManager::updateTimeDisplay() {
     unsigned long currentTime = millis();
     
-    // 更新秒显示
+    // 获取当前时间
+    time_t now;
+    struct tm timeinfo;
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    
+    // 每秒更新秒显示
     if (currentTime - lastSecondUpdate >= 1000) {
         updateSecondDisplay();
         lastSecondUpdate = currentTime;
+        
+        // 当秒归零时，更新分钟显示
+        if (timeinfo.tm_sec == 0) {
+            updateMinuteDisplay();
+            lastMinuteUpdate = currentTime;
+            forceUpdateMinute = false;
+        }
     }
     
-    // 更新分钟显示（每分钟或强制刷新时）
-    if (currentTime - lastMinuteUpdate >= 60000 || (currentTime - lastMinuteUpdate >= 5000 && forceUpdateMinute)) {
+    // 强制更新或分钟变更时更新（为了兼容旧代码）
+    if (forceUpdateMinute) {
         updateMinuteDisplay();
         lastMinuteUpdate = currentTime;
         forceUpdateMinute = false;

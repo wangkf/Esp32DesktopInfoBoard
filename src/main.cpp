@@ -1,23 +1,17 @@
 #include "includes.h"
 #include <SPIFFS.h>
 #include "network/web_config_server.h"
+#include "config/config_manager.h"
 
 // 全局变量定义
 const char* ntpServer = NTP_SERVER;
-String cityCode = "101010100";
 
 // LVGL对象声明
-extern lv_obj_t* weather_label;
-extern lv_obj_t* weather_table;
 extern lv_obj_t* news_label;
 extern lv_obj_t* mao_select_label;
 extern lv_obj_t* toxic_soul_label;
 extern lv_obj_t* iciba_label;
 extern lv_obj_t* astronauts_label;
-extern lv_obj_t* aprs_label;
-extern lv_obj_t* aprs_table;
-
-epd_rtc_data epd_rtc = {0}; // 初始化为0，避免未定义行为
 
 // 标记系统是否已经初始化
 bool systemInitialized = false;
@@ -72,27 +66,19 @@ void initHardware() {
 void initWiFiAndNTP() {
   Serial.println("初始化WiFi和NTP...");
   
-  // 读取WiFi配置
-  String ssid = WIFI_SSID;
-  String password = WIFI_PASSWORD;
+  // 使用ConfigManager获取WiFi配置
+  ConfigManager* configManager = ConfigManager::getInstance();
+  String ssid = "";
+  String password = "";
   
-  // 如果有保存的配置文件，则读取
-  if (SPIFFS.exists("/wifi_config.json")) {
-    File file = SPIFFS.open("/wifi_config.json", "r");
-    if (file) {
-      StaticJsonDocument<200> doc;
-      DeserializationError error = deserializeJson(doc, file);
-      if (!error) {
-        if (doc.containsKey("ssid")) {
-          ssid = doc["ssid"].as<String>();
-        }
-        if (doc.containsKey("password")) {
-          password = doc["password"].as<String>();
-        }
-        Serial.println("已加载保存的WiFi配置");
-      }
-      file.close();
+  if (configManager->isConfigLoaded()) {
+    if (configManager->getWiFiConfig(ssid, password)) {
+      Serial.println("已从配置管理器加载WiFi配置");
+    } else {
+      Serial.println("无法从配置管理器获取WiFi配置，使用默认值");
     }
+  } else {
+    Serial.println("配置管理器未初始化，使用默认WiFi配置");
   }
   
   // 连接WiFi
@@ -111,7 +97,11 @@ void initWiFiAndNTP() {
     Serial.print("IP地址: ");
     Serial.println(WiFi.localIP());
     
-    // 初始化NTP
+    // 初始化NTP - 从ConfigManager获取时区配置
+    int timezone = configManager->getNTPServerTimezone();
+    long gmtOffset_sec = timezone * 3600; // 将时区转换为秒
+    const long daylightOffset_sec = 0; // 不使用夏令时
+    
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     
     // 等待时间同步
@@ -149,25 +139,29 @@ void updateBrightness() {
   if (millis() - lastBrightnessUpdateTime >= brightnessUpdateInterval) {
     int lightValue = analogRead(LIGHT_SENSOR_PIN);
     
-    // 打印调试信息
+    // 注释掉调试信息
+    /*
     if (lightValue % 10 == 0) {  // 每10次更新才打印一次，避免过于频繁
       Serial.printf("光线传感器值: %d\n", lightValue);
     }
+    */
     
     // 将传感器值映射到亮度值（0-255）
     // 环境越暗，屏幕越亮；环境越亮，屏幕越暗
     int brightness = map(lightValue, 0, 4095, 0, 255); 
     
     // 限制亮度值范围
-    brightness = constrain(brightness, 0, 255);
+    brightness = constrain(brightness, 30, 255);
     
     // 设置屏幕亮度
     ledcWrite(LED_CHANNEL, brightness);
     
-    // 打印设置的亮度值（每10次更新才打印一次）
+    // 注释掉调试信息
+    /*
     if (lightValue % 10 == 0) {
       Serial.printf("设置屏幕亮度: %d\n", brightness);
     }
+    */
     
     lastBrightnessUpdateTime = millis();
   }
@@ -282,22 +276,43 @@ void initSystem() {
   // 初始化UI元素
   initUI();
   
-  // 初始化WiFi和NTP
+  // 初始化WiFi和NTP - 优先进行
   initWiFiAndNTP();
+  
+  // 等待时间同步完成
+  Serial.println("等待NTP时间同步...");
+  time_t now;
+  struct tm timeinfo;
+  int retry = 0;
+  const int retry_limit = 10;
+  while (retry < retry_limit) {
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    if (timeinfo.tm_year > 100) { // 确保时间已同步（2000年之后）
+      break;
+    }
+    delay(1000);
+    retry++;
+    Serial.print(".");
+  }
+  
+  if (retry < retry_limit) {
+    Serial.println("\nNTP时间同步成功");
+  } else {
+    Serial.println("\nNTP时间同步超时，继续启动");
+  }
   
   // 初始化所有管理器
   ScreenManager::getInstance()->init();
   TimeManager::getInstance()->init();
   DataManager::getInstance()->init();
-  WeatherManager::getInstance()->init();
   ButtonManager::getInstance()->begin();
   initDisplayManager();
   
   // 初始化Web配置服务器
   WebConfigServer::getInstance()->init();
   
-  // 设置天气管理器的天气表格引用
-  WeatherManager::getInstance()->setWeatherTable(weather_table);
+
   
   // 标记系统已初始化
   systemInitialized = true;
@@ -310,16 +325,6 @@ void initSystem() {
   // 初始化完成后显示第一个屏幕（新闻屏幕）
   // 注：已屏蔽天气屏幕
   ScreenManager::getInstance()->switchToScreen(NEWS_SCREEN);
-  
-  // 测试从URL显示图片功能（可选功能，用于演示）
-  // 注意：由于ESP32的内存限制，建议使用较小尺寸的图片进行测试
-  // 以下代码段仅用于演示，实际使用时可根据需要取消注释
-  /*
-  delay(2000); // 等待2秒，确保系统完全初始化
-  testDisplayImageFromUrl("https://via.placeholder.com/240x240.jpg"); // 测试显示240x240像素的占位图片
-  delay(5000); // 显示5秒后继续
-  ScreenManager::getInstance()->switchToScreen(NEWS_SCREEN); // 切换回新闻屏幕
-  */
 }
 
 // 显示任务函数 - 在CORE_0上运行

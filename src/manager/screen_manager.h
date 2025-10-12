@@ -6,8 +6,7 @@
 
 // 屏幕状态枚举已在config.h中定义
 
-// 前向声明
-class WeatherDisplay;
+
 
 /**
  * 屏幕管理器类
@@ -30,12 +29,14 @@ private:
     void hideAllScreens();
     
     // 显示特定屏幕
-    void showWeatherScreen();
     void showNewsScreen();
     void showMaoSelectScreen();
     void showToxicSoulScreen();
     void showIcibaScreen();
     void showAstronautsScreen();
+    
+    // 显示当前屏幕
+    void showCurrentScreen();
     
 public:
     // 获取单例实例
@@ -51,7 +52,7 @@ public:
     void switchToScreen(ScreenState screenState);
     
     // 获取当前屏幕状态
-    ScreenState getCurrentScreen();
+    inline ScreenState getCurrentScreen() { return currentScreen; }
     
     // 刷新当前屏幕数据
     void refreshCurrentScreenData();

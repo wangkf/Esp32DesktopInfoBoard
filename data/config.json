@@ -1,13 +1,7 @@
 {
-  "api": {
-    "key": "38c43566fe20217eab8108f8243b5a89"
-  },
   "display": {
     "brightness": 128,
     "refresh_interval": 60000
-  },
-  "weather": {
-    "city_code": "101110101"
   },
   "wifi": {
     "ssid": "wonder",
@@ -15,26 +9,5 @@
   },
   "ntp": {
     "timezone": 8
-  },
-  "hardware": {
-    "BUTTON_PIN": 18,
-    "LIGHT_SENSOR_PIN": 35,
-    "SCREEN_BRIGHTNESS_PIN": 22
-  },
-  "button": {},
-  "aprs": {
-    "callsign": "BI9ABS",
-    "passcode": "19129",
-    "server": "asia.aprs2.net",
-    "port": 14580,
-    "range_km": 10,
-    "max_packets": 6
-  },
-  "other": {
-    "updateInterval": 1000,
-    "data_cache_interval": 7200000,
-    "DARK_THRESHOLD": 2000,
-    "VERY_DARK_THRESHOLD": 500,
-    "brightnessUpdateInterval": 200
   }
 }

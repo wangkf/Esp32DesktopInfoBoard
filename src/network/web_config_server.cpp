@@ -50,6 +50,7 @@ void WebConfigServer::init() {
     // 注册处理函数
     server.on("/", HTTP_GET, std::bind(&WebConfigServer::handleRoot, this));
     server.on("/wifi-config", HTTP_POST, std::bind(&WebConfigServer::handleWiFiConfig, this));
+    server.on("/system-config", HTTP_POST, std::bind(&WebConfigServer::handleSystemConfig, this));
     server.on("/restart", HTTP_POST, std::bind(&WebConfigServer::handleRestart, this));
     server.on("/json-files", HTTP_GET, std::bind(&WebConfigServer::handleJsonFile, this));
     server.on("/json-file", HTTP_GET, std::bind(&WebConfigServer::handleJsonFileContent, this));
@@ -156,6 +157,18 @@ void WebConfigServer::handleRoot() {
     html += "<input type='submit' value='保存配置'>";
     html += "</form>";
     
+    // 添加系统配置部分
+    String apiKey;
+    int timezone;
+    readSystemConfig(apiKey, timezone);
+    
+    html += "<h2>系统配置</h2>";
+    html += "<form action='/system-config' method='post'>";
+    html += "NTP时区(整数，如北京时间为8): <input type='number' name='timezone' value='" + String(timezone) + "'><br>";
+    html += "API密钥: <input type='text' name='apiKey' value='" + apiKey + "'><br>";
+    html += "<input type='submit' value='保存配置'>";
+    html += "</form>";
+    
     // 添加重启系统按钮
     html += "<form action='/restart' method='post'>";
     html += "<input type='submit' value='重启系统'>";
@@ -236,26 +249,20 @@ void WebConfigServer::handleNotFound() {
  * 读取WiFi配置
  */
 void WebConfigServer::readWiFiConfig(String& ssid, String& password) {
-    // 默认使用config.h中定义的配置
-    ssid = WIFI_SSID;
-    password = WIFI_PASSWORD;
-    
-    // 如果有保存的配置文件，则读取
-    if (SPIFFS.exists("/wifi_config.json")) {
-        File file = SPIFFS.open("/wifi_config.json", "r");
-        if (file) {
-            JsonDocument doc;
-            DeserializationError error = deserializeJson(doc, file);
-            if (!error) {
-                if (doc.containsKey("ssid")) {
-                    ssid = doc["ssid"].as<String>();
-                }
-                if (doc.containsKey("password")) {
-                    password = doc["password"].as<String>();
-                }
-            }
-            file.close();
+    // 使用ConfigManager获取WiFi配置
+    ConfigManager* configManager = ConfigManager::getInstance();
+    if (configManager->isConfigLoaded()) {
+        if (!configManager->getWiFiConfig(ssid, password)) {
+            // 如果无法从配置管理器获取配置，使用默认值
+            Serial.println("无法从配置管理器获取WiFi配置，使用默认值");
+            ssid = "Mywifi";
+            password = "12345678";
         }
+    } else {
+        // 如果配置管理器未初始化，使用默认值
+        Serial.println("配置管理器未初始化，使用默认WiFi配置");
+        ssid = "Mywifi";
+        password = "12345678";
     }
 }
 
@@ -263,29 +270,20 @@ void WebConfigServer::readWiFiConfig(String& ssid, String& password) {
  * 保存WiFi配置
  */
 bool WebConfigServer::saveWiFiConfig(const String& ssid, const String& password) {
-    // 创建JSON文档
-    JsonDocument doc;
-    doc["ssid"] = ssid;
-    doc["password"] = password;
-    doc["last_updated"] = millis();
-    
-    // 打开文件进行写入
-    File file = SPIFFS.open("/wifi_config.json", "w");
-    if (!file) {
-        Serial.println("无法打开WiFi配置文件进行写入");
+    // 使用ConfigManager保存WiFi配置
+    ConfigManager* configManager = ConfigManager::getInstance();
+    if (configManager->isConfigLoaded()) {
+        if (configManager->setWiFiConfig(ssid, password)) {
+            Serial.println("WiFi配置保存成功");
+            return true;
+        } else {
+            Serial.println("WiFi配置保存失败");
+            return false;
+        }
+    } else {
+        Serial.println("配置管理器未初始化，无法保存WiFi配置");
         return false;
     }
-    
-    // 序列化JSON到文件
-    if (serializeJson(doc, file) == 0) {
-        Serial.println("序列化WiFi配置失败");
-        file.close();
-        return false;
-    }
-    
-    file.close();
-    Serial.println("WiFi配置保存成功");
-    return true;
 }
 
 /**
@@ -400,5 +398,62 @@ String WebConfigServer::readJsonFileContent(const String& fileName) {
     } else {
         content = "无法打开文件: " + fileName;
         return content;
+    }
+}
+
+/**
+ * 处理系统配置请求（NTP时区和API密钥）
+ */
+void WebConfigServer::handleSystemConfig() {
+    if (server.hasArg("timezone") && server.hasArg("apiKey")) {
+        String apiKey = server.arg("apiKey");
+        int timezone = server.arg("timezone").toInt();
+        
+        if (saveSystemConfig(apiKey, timezone)) {
+            server.send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>配置保存成功!</h1><p>重启设备后生效。</p><p><a href='/'>返回首页</a></p></body></html>");
+        } else {
+            server.send(500, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>配置保存失败!</h1><p><a href='/'>返回首页</a></p></body></html>");
+        }
+    } else {
+        server.send(400, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>参数错误!</h1><p><a href='/'>返回首页</a></p></body></html>");
+    }
+}
+
+/**
+ * 读取系统配置（NTP时区和API密钥）
+ */
+void WebConfigServer::readSystemConfig(String& apiKey, int& timezone) {
+    // 使用ConfigManager获取系统配置
+    ConfigManager* configManager = ConfigManager::getInstance();
+    if (configManager->isConfigLoaded()) {
+        timezone = configManager->getNTPServerTimezone();
+    } else {
+        // 如果配置管理器未初始化，使用默认值
+        Serial.println("配置管理器未初始化，使用默认系统配置");
+        timezone = 8; // 默认东八区
+    }
+}
+
+/**
+ * 保存系统配置（NTP时区和API密钥）
+ */
+bool WebConfigServer::saveSystemConfig(const String& apiKey, int timezone) {
+    // 使用ConfigManager保存系统配置
+    ConfigManager* configManager = ConfigManager::getInstance();
+    if (configManager->isConfigLoaded()) {
+        // 使用ConfigManager提供的方法来保存配置
+        bool apiKeySaved = configManager->setApiKey(apiKey);
+        bool timezoneSaved = configManager->setNTPServerTimezone(timezone);
+        
+        if (apiKeySaved && timezoneSaved) {
+            Serial.println("系统配置保存成功");
+            return true;
+        } else {
+            Serial.println("系统配置保存失败");
+            return false;
+        }
+    } else {
+        Serial.println("配置管理器未初始化，无法保存系统配置");
+        return false;
     }
 }

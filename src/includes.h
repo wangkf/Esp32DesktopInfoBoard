@@ -22,11 +22,9 @@
 
 // UI模块
 #include "ui/display_manager.h"
-#include "ui/weather_display.h"
-#include "ui/weather_manager.h"
 
 // 初始化模块
-#include "init_ui.h"
+#include "ui/init_ui.h"
 
 // 网络模块
 #include "network/net_http.h"

@@ -1,67 +1,0 @@
-*************************** START ****************************
-START TIME: 202111182139
-CONNECT BAUD: 115200
-com port closed
-set state: ESP_DL_SYNC
-serial port opened
------------
-baud:115200
-root baud:115200
--------------
-===============BAUD : 115200===============CALL DEVICE SYNC
-connecting...
-chip sync ok
-mac l: 0xf27c4e80L
-mac h: 0x71083a
-crc_cal: 113
-crc_read: 113
-crc_test: 0
-ESP32 MAC CRC OK
-get mac res: 1
-get flash id : 0x0016405e
-manufacturer_id: 0x5e
-device_id: 0x4016
-SET FLASH PARAMS
-Wrote 18624 bytes (12073 compressed) at 0x00001000 in 0.2 seconds (effective 937.1 kbit/s)...
-Hash of data verified.Wrote 3072 bytes (117 compressed) at 0x00008000 in 0.0 seconds (effective 3510.9 kbit/s)...
-Hash of data verified.Wrote 8192 bytes (47 compressed) at 0x0000e000 in 0.0 seconds (effective 10922.6 kbit/s)...
-Hash of data verified.com closed
-Use time: 82 s
-Download result: FAIL
-*************************** END ****************************
-
-*************************** START ****************************
-START TIME: 202111182140
-CONNECT BAUD: 115200
-com port closed
-set state: ESP_DL_SYNC
-serial port opened
------------
-baud:115200
-root baud:115200
--------------
-===============BAUD : 115200===============CALL DEVICE SYNC
-connecting...
-chip sync ok
-mac l: 0xf27c4e80L
-mac h: 0x71083a
-crc_cal: 113
-crc_read: 113
-crc_test: 0
-ESP32 MAC CRC OK
-get mac res: 1
-get flash id : 0x0016405e
-manufacturer_id: 0x5e
-device_id: 0x4016
-SET FLASH PARAMS
-Wrote 18624 bytes (12073 compressed) at 0x00001000 in 0.2 seconds (effective 967.5 kbit/s)...
-Hash of data verified.Wrote 3072 bytes (117 compressed) at 0x00008000 in 0.0 seconds (effective 4096.0 kbit/s)...
-Hash of data verified.Wrote 8192 bytes (47 compressed) at 0x0000e000 in 0.0 seconds (effective 13106.9 kbit/s)...
-Hash of data verified.Wrote 3610144 bytes (2284768 compressed) at 0x00010000 in 36.1 seconds (effective 800.8 kbit/s)...
-Hash of data verified.
-Leaving...
-com closed
-Use time: 46 s
-Download result: PASS
-*************************** END ****************************
-

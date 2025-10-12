@@ -1,1 +1,0 @@
-固件已经集成，双击打开flash_download_tool_3.8.7.exe，选择ESP32，直接START下载即可，下载完成后断电重启

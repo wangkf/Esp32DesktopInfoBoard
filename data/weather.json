@@ -6,31 +6,31 @@
     "city_code": "西安",
     "city_name_en": "西安",
     "realtime": {
-      "temperature": "20.5",
-      "temperature_f": "68.9",
+      "temperature": "18.4",
+      "temperature_f": "65.1",
       "humidity": "100%",
       "humidity_alt": "100%",
-      "info": "阴转多云",
+      "info": "阴转小雨",
       "wid": "d2",
-      "direct": "西南风",
-      "direct_en": "SW",
+      "direct": "南风",
+      "direct_en": "S",
       "power": "1级",
-      "power_detail": "3km/h",
-      "pressure": "965",
+      "power_detail": "1km/h",
+      "pressure": "969",
       "visibility": "16km",
-      "obs_time": "22:20",
+      "obs_time": "19:50",
       "rain": "0",
       "rain_24h": "0",
-      "aqi": "48",
-      "pm25": "48"
+      "aqi": "17",
+      "pm25": "17"
     },
     "extended_info": {
       "temp_high": "999",
-      "temp_low": "17",
-      "weather_night": "n1",
+      "temp_low": "16",
+      "weather_night": "n7",
       "wind_direction": "西南风转微风",
       "wind_scale": "<3级",
-      "forecast_time": "202510080800"
+      "forecast_time": "202510090800"
     },
     "raw_data": {
       "city_dz_keys": [
@@ -85,12 +85,12 @@
     },
     "future": [
       {
-        "date": "2025-10-08",
-        "temperature": "17~20.5",
-        "weather": "阴转多云",
+        "date": "2025-10-09",
+        "temperature": "16~18.4",
+        "weather": "阴转小雨",
         "direct": "西南风转微风"
       }
     ],
-    "last_updated": "2025-10-08 22:45:14"
+    "last_updated": "2025-10-09 20:10:34"
   }
 }

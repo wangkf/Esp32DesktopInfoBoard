@@ -118,9 +118,9 @@ def http_get_request(url, params=None, headers=None):
         logger.error(f'请求异常: {url}, 错误: {e}')
         return None
 
-## 1. 处理icba.json - 只保留指定字段：tts, content, note, fenxiang_img及result中的last_updated
-def process_icba():
-    file_path = os.path.join(data_dir, 'icba.json')
+## 1. 处理iciba.json - 只保留指定字段：tts, content, note, fenxiang_img及result中的last_updated
+def process_iciba():
+    file_path = os.path.join(data_dir, 'iciba.json')
     try:
         # 获取当前时间
         current_time = get_current_time()
@@ -171,11 +171,11 @@ def process_icba():
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(filtered_data, f, ensure_ascii=False, indent=2)
             
-            logger.info(f'已成功处理icba.json，只保留指定字段，更新时间: {current_time}')
+            logger.info(f'已成功处理iciba.json，只保留指定字段，更新时间: {current_time}')
         else:
-            logger.warning(f'没有获取到有效数据，不更新icba.json文件')
+            logger.warning(f'没有获取到有效数据，不更新iciba.json文件')
     except Exception as e:
-        logger.error(f'处理icba.json时出错: {e}')
+        logger.error(f'处理iciba.json时出错: {e}')
 
 ## 2. 处理news.json - 从API获取数据，只保留title和last_updated，其他数据不保存
 def process_news():
@@ -1162,7 +1162,7 @@ def main():
     # 使用统一函数处理各JSON文件
     process_json_file('astronauts.json', 24, process_astronauts)  # 每日更新一次
     process_json_file('weather.json', 0.5, process_weather)  # 半小时内不更新
-    process_json_file('icba.json', 24, process_icba)  # 每日更新一次
+    process_json_file('iciba.json', 24, process_iciba)  # 每日更新一次
     process_json_file('news.json', 2, process_news)  # 每两小时更新一次
     
     # 检查配置文件

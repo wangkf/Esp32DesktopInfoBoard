@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <OneButton.h> // 引入OneButton库
-#include "config.h" // 包含配置文件
+#include "config/config.h" // 包含配置文件
 
 class ButtonUtils {
 private:

@@ -1,4 +1,0 @@
-bootloader_qio_40m.bin 烧录地址：0x00001000
-partitions.bin  烧录地址：0x00008000
-boot_app0.bin  烧录地址：0x0000e000
-firmware.bin  烧录地址：0x00010000

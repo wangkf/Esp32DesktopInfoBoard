@@ -270,7 +270,7 @@ void displayAstronautsDataFromFile() {
     JsonArray peopleArray = doc["people"].as<JsonArray>();
     
     // 构建宇航员显示文本
-    String astronautsText = "太空宇航员列表\n\n";
+    String astronautsText = "太空宇航员列表\n";
     
     // 遍历宇航员数组
     for (JsonVariant astronaut : peopleArray) {

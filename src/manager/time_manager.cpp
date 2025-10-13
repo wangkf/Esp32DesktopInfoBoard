@@ -3,6 +3,10 @@
 #include "config/config.h"
 #include "lvgl.h"
 #include "esp_log.h"
+#include <TFT_eSPI.h>
+
+// 声明外部TFT对象
+extern TFT_eSPI tft;
 
 // 字体定义
 extern const lv_font_t lvgl_font_digital_24;
@@ -58,7 +62,6 @@ TimeManager* TimeManager::getInstance() {
  */
 void TimeManager::init() {
     Serial.println("初始化时间管理器");
-    
     // === 时分标签（hour_minute_label）=== 位置：左上角对齐，x偏移5，y偏移30
     if (!hour_minute_label) {
         hour_minute_label = lv_label_create(lv_scr_act());
@@ -114,6 +117,27 @@ void TimeManager::init() {
     
     // 初始化时强制更新分钟显示
     updateMinuteDisplay();
+
+    // 创建样式
+    static lv_style_t style_line;
+    lv_style_init(&style_line);
+    lv_style_set_line_width(&style_line, 2); // 增加宽度使线条更明显
+    lv_style_set_line_color(&style_line, lv_palette_main(LV_PALETTE_GREEN));
+    lv_style_set_line_rounded(&style_line, true);
+
+    // 1. 在日期和星期标签下方添加绿色横线
+    static lv_point_t line_points1[] = { {4, 25}, {190, 25} }; // 稍调整Y坐标
+    lv_obj_t * line1 = lv_line_create(lv_scr_act());
+    lv_line_set_points(line1, line_points1, 2);
+    lv_obj_add_style(line1, &style_line, 0);
+    lv_obj_move_foreground(line1); // 移动到前台，确保显示在最上层
+
+    // 2. 在时间标签下方添加绿色横线（考虑48像素字体的高度）
+    static lv_point_t line_points2[] = { {4, 80}, {screenWidth, 80} }; // 稍调整Y坐标
+    lv_obj_t * line2 = lv_line_create(lv_scr_act());
+    lv_line_set_points(line2, line_points2, 2);
+    lv_obj_add_style(line2, &style_line, 0);
+    lv_obj_move_foreground(line2); // 移动到前台，确保显示在最上层
 }
 
 /**

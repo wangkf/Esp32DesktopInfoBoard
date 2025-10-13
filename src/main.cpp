@@ -370,6 +370,8 @@ void displayTask(void *pvParameters) {
         
         // 创建一个临时标签显示配置信息
         static lv_obj_t* config_label = nullptr;
+        static lv_obj_t* config_line = nullptr;
+        
         if (config_label == nullptr || !lv_obj_is_valid(config_label)) {
           config_label = lv_label_create(lv_scr_act());
           lv_obj_set_style_text_font(config_label, &lvgl_font_song_16, 0);
@@ -379,10 +381,34 @@ void displayTask(void *pvParameters) {
           lv_label_set_long_mode(config_label, LV_LABEL_LONG_SCROLL); // 设置为向上滚动显示模式
         }
         
+        // 创建或更新config_label上方的绿色横线
+        if (config_line == nullptr || !lv_obj_is_valid(config_line)) {
+          config_line = lv_line_create(lv_scr_act());
+          
+          // 创建线条样式
+          static lv_style_t style_line;
+          lv_style_init(&style_line);
+          lv_style_set_line_width(&style_line, 2); // 线条宽度
+          lv_style_set_line_color(&style_line, lv_color_hex(0x00FF00)); // 绿色
+          lv_style_set_line_rounded(&style_line, true);
+          
+          // 添加样式到线条对象
+          lv_obj_add_style(config_line, &style_line, 0);
+          
+          // 设置线条位置在config_label上方
+          lv_point_t line_points[] = { {0, screenHeight - 75}, {screenWidth, screenHeight - 75} };
+          lv_line_set_points(config_line, line_points, 2);
+        }
+        
         if (config_label && lv_obj_is_valid(config_label)) {
           lv_label_set_text(config_label, configInfo.c_str());
           lv_obj_clear_flag(config_label, LV_OBJ_FLAG_HIDDEN);
           lv_obj_move_foreground(config_label);
+        }
+        
+        if (config_line && lv_obj_is_valid(config_line)) {
+          lv_obj_clear_flag(config_line, LV_OBJ_FLAG_HIDDEN);
+          lv_obj_move_foreground(config_line);
         }
       }
       

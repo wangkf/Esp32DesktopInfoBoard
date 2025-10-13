@@ -45,7 +45,7 @@ void ScreenManager::init() {
 
     // 创建屏幕主题符号标签
     screen_symbol_label = lv_label_create(screen_title_btn);
-//    lv_label_set_text(screen_symbol_label, "\uF013"); // 默认显示设置图标 - 修正Unicode转义格式
+    lv_label_set_text(screen_symbol_label, ""); // 默认显示设置图标 - 修正Unicode转义格式
     // 确保使用支持图标的字体
     lv_obj_set_style_text_font(screen_symbol_label, &lvgl_font_song_16, 0);
     lv_obj_set_style_text_color(screen_symbol_label, lv_color_hex(0x808080), 0); // 符号标签对齐 - 调整左边距确保在可视区域内
@@ -132,9 +132,7 @@ if (note_label && lv_obj_is_valid(note_label)) {
     
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-        // 更新符号
-        lv_label_set_text(screen_symbol_label, "\uF075"); // 便签图标
-        // 更新标题文本
+      // 更新标题文本
         lv_label_set_text(title_label, "\uF075 留言板");
         
         // 更新色块颜色
@@ -214,9 +212,7 @@ void ScreenManager::showCalendarScreen() {
     
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-        // 更新符号
-        lv_label_set_text(screen_symbol_label, "\uF073"); // 日历图标
-        // 更新标题文本
+      // 更新标题文本
         lv_label_set_text(title_label, "\uF073 日历");
         
         // 更新色块颜色
@@ -347,10 +343,8 @@ void ScreenManager::showNewsScreen() {
     
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-        // 更新符号
-        lv_label_set_text(screen_symbol_label, "\uF0AE"); // 新闻图标
-        // 更新标题文本
-        lv_label_set_text(title_label, " 每日新闻");
+      // 更新标题文本
+        lv_label_set_text(title_label, "\uF0AE 每日新闻");
         
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x0000FF), 0); // 蓝色
@@ -369,10 +363,8 @@ void ScreenManager::showMaoSelectScreen() {
     
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-        // 更新符号
-    lv_label_set_text(screen_symbol_label, "\uF024"); // 主席语录图标
-        // 更新标题文本
-        lv_label_set_text(title_label, " 毛主席语录");
+      // 更新标题文本
+        lv_label_set_text(title_label, "\uF024 毛主席语录");
         
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0xFF0000), 0); // 红色
@@ -390,10 +382,8 @@ void ScreenManager::showToxicSoulScreen() {
     
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-        // 更新符号
-    lv_label_set_text(screen_symbol_label, "\uF069"); // 鸡汤图标
-        // 更新标题文本
-        lv_label_set_text(title_label, " 心灵鸡汤");
+      // 更新标题文本
+        lv_label_set_text(title_label, "\uF069 心灵鸡汤");
         
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x008000), 0); // 绿色
@@ -417,10 +407,8 @@ if (iciba_label) {
     
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-        // 更新符号
-    lv_label_set_text(screen_symbol_label, "\uF0AC"); // 词典图标
-        // 更新标题文本
-        lv_label_set_text(title_label, " 每日一句");
+      // 更新标题文本
+        lv_label_set_text(title_label, "\uF0AC 每日一句");
         
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0xFFA500), 0); // 橙色
@@ -461,10 +449,8 @@ if (!astronauts_label) {
 
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-        // 更新符号
-    lv_label_set_text(screen_symbol_label, "\uF0C2"); // 宇航员图标
-        // 更新标题文本
-        lv_label_set_text(title_label, " 太空宇航员");
+      // 更新标题文本
+        lv_label_set_text(title_label, "\uF0C2 太空宇航员");
         
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x4B0082), 0); // 靛蓝色
@@ -513,20 +499,4 @@ if (toxic_soul_label && lv_obj_is_valid(toxic_soul_label)) {
     // 确保标签显示在最上层
     lv_obj_move_foreground(toxic_soul_label);
 }
-}
-
-
-
-/**
- * 设置配置模式图标状态
- */
-void ScreenManager::setConfigIconStatus(bool isConfigMode) {
-    if (screen_symbol_label) {
-        lv_label_set_text(screen_symbol_label, "\uF013"); // 设置图标为设置图标
-        if (isConfigMode) {
-            lv_obj_set_style_text_color(screen_symbol_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在蓝色背景上可见
-        } else {
-            lv_obj_set_style_text_color(screen_symbol_label, lv_color_hex(0x808080), 0); // 灰色文字
-        }
-    }
 }

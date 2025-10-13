@@ -168,7 +168,7 @@ void updateBrightness() {
     int brightness = map(lightValue, 0, 4095, 0, 255); 
     
     // 限制亮度值范围
-    brightness = constrain(brightness, 5, 255);
+    brightness = constrain(brightness, 1, 255);
     
     // 设置屏幕亮度
     ledcWrite(LED_CHANNEL, brightness);
@@ -361,7 +361,7 @@ void initSystem() {
   Serial.println("系统初始化完成，自动换屏功能已启用");
   
   // 初始化完成后显示第一个屏幕（毛主席语录屏幕）
-  ScreenManager::getInstance()->switchToScreen(MAO_SELECT_SCREEN);
+  ScreenManager::getInstance()->switchToScreen(NEWS_SCREEN);
 }
 
 // 显示任务函数 - 在CORE_0上运行

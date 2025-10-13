@@ -35,6 +35,7 @@ private:
     void showAstronautsScreen();
     void showNewsScreen();
     void showCalendarScreen();
+    void showNoteScreen();
     
     // 显示当前屏幕
     void showCurrentScreen();

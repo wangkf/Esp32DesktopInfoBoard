@@ -4,6 +4,9 @@
 // 引入必要的头文件
 #include <Arduino.h>
 
+// 软件版本定义
+#define SOFTWARE_VERSION "0.1.0"
+
 // WiFi配置信息已移至ConfigManager类中管理
 // 从data/config.json文件中读取
 
@@ -17,7 +20,8 @@ enum ScreenState {
   MAO_SELECT_SCREEN,
   TOXIC_SOUL_SCREEN,
   ICIBA_SCREEN,
-  ASTRONAUTS_SCREEN
+  ASTRONAUTS_SCREEN,
+  NOTE_SCREEN
 };
 
 // 按钮事件类型

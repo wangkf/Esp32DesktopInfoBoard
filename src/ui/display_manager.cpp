@@ -343,6 +343,74 @@ void displayIcibaDataFromFile() {
 }
 
 /**
+ * 显示留言板内容
+ */
+void displayNoteDataFromFile() {
+  Serial.println("从文件显示留言板内容");
+  
+  // 外部声明note_label
+  extern lv_obj_t* note_label;
+  
+  // 确保note_label已创建和初始化
+  if (!note_label || !lv_obj_is_valid(note_label)) {
+    Serial.println("note_label无效，无法显示留言板内容");
+    return;
+  }
+  
+  JsonDocument doc;
+  if (!readJsonFromFile("/note.json", doc)) {
+    if (note_label && lv_obj_is_valid(note_label)) {
+      lv_label_set_text(note_label, "暂无留言内容");
+      lv_obj_clear_flag(note_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
+    }
+    return;
+  }
+
+  // 构建留言板显示文本
+  String noteText = "";
+  
+  // 检查是否包含note字段
+  if (doc.containsKey("note") && doc["note"].is<const char*>()) {
+    String noteContent = doc["note"].as<const char*>();
+    
+    // 如果note内容为空，显示提示信息
+    if (noteContent.isEmpty()) {
+      noteText = "留言板\n\n暂无留言内容";
+    } else {
+      // 添加note内容，确保格式良好
+      noteText += noteContent;
+    }
+  } else {
+    noteText += "暂无留言内容";
+  }
+  
+  // 添加更新时间（如果有）
+  /*
+  if (doc.containsKey("update_time")) {
+    if (doc["update_time"].is<unsigned long>()) {
+      // 将时间戳转换为可读格式
+      unsigned long timestamp = doc["update_time"].as<unsigned long>();
+      time_t now = timestamp / 1000; // 转换为秒
+      struct tm *timeinfo = localtime(&now);
+      if (timeinfo != nullptr) {
+        char timeString[20];
+        strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", timeinfo);
+        noteText += "\n\n更新时间: " + String(timeString);
+      }
+    } else if (doc["update_time"].is<const char*>()) {
+      noteText += "\n\n更新时间: " + String(doc["update_time"].as<const char*>());
+    }
+  }
+  */
+  // 更新留言板标签
+  if (note_label && lv_obj_is_valid(note_label)) {
+    lv_label_set_text(note_label, noteText.c_str());
+    lv_obj_clear_flag(note_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
+    lv_obj_move_foreground(note_label); // 确保标签显示在最上层
+  }
+}
+
+/**
  * 显示宇航员信息
  */
 void displayAstronautsDataFromFile() {

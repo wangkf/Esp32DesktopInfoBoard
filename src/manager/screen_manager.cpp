@@ -45,7 +45,7 @@ void ScreenManager::init() {
 
     // 创建屏幕主题符号标签
     screen_symbol_label = lv_label_create(screen_title_btn);
-    lv_label_set_text(screen_symbol_label, "\uF013"); // 默认显示设置图标 - 修正Unicode转义格式
+//    lv_label_set_text(screen_symbol_label, "\uF013"); // 默认显示设置图标 - 修正Unicode转义格式
     // 确保使用支持图标的字体
     lv_obj_set_style_text_font(screen_symbol_label, &lvgl_font_song_16, 0);
     lv_obj_set_style_text_color(screen_symbol_label, lv_color_hex(0x808080), 0); // 符号标签对齐 - 调整左边距确保在可视区域内
@@ -107,6 +107,39 @@ extern lv_obj_t* today_date_label;
 if (today_date_label) {
     lv_obj_add_flag(today_date_label, LV_OBJ_FLAG_HIDDEN);
 }
+
+    // 隐藏留言板标签
+extern lv_obj_t* note_label;
+if (note_label) {
+    lv_obj_add_flag(note_label, LV_OBJ_FLAG_HIDDEN);
+}
+}
+
+/**
+ * 显示留言板屏幕
+ */
+void ScreenManager::showNoteScreen() {
+    Serial.println("切换到留言板屏幕");
+    
+    // 确保note_label被创建并显示
+extern lv_obj_t* note_label;
+if (note_label && lv_obj_is_valid(note_label)) {
+    // 从文件加载并显示note内容
+    ::displayNoteDataFromFile();
+    lv_obj_clear_flag(note_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(note_label);
+}
+    
+    // 更新屏幕标题和符号
+    if (screen_symbol_label && screen_title_btn && title_label) {
+        // 更新符号
+        lv_label_set_text(screen_symbol_label, "\uF075"); // 便签图标
+        // 更新标题文本
+        lv_label_set_text(title_label, "\uF075 留言板");
+        
+        // 更新色块颜色
+        lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0xFFA500), 0); // 橙色
+    }
 }
 
 /**
@@ -132,6 +165,9 @@ void ScreenManager::showCurrentScreen() {
             break;
         case CALENDAR_SCREEN:
             showCalendarScreen();
+            break;
+        case NOTE_SCREEN:
+            showNoteScreen();
             break;
         default:
             // 如果当前屏幕无效，默认显示毛选屏幕
@@ -181,7 +217,7 @@ void ScreenManager::showCalendarScreen() {
         // 更新符号
         lv_label_set_text(screen_symbol_label, "\uF073"); // 日历图标
         // 更新标题文本
-        lv_label_set_text(title_label, "📅 日历");
+        lv_label_set_text(title_label, "\uF073 日历");
         
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x800080), 0); // 紫色
@@ -195,23 +231,51 @@ void ScreenManager::toggleScreen() {
     // 隐藏所有屏幕元素
     hideAllScreens();
     
-    // 定义屏幕切换顺序：新闻 -> 日历 -> 金山词霸 -> 太空宇航员 -> 毛选 -> 乌鸡汤 -> 新闻...
-    static const ScreenState screenOrder[] = {NEWS_SCREEN, CALENDAR_SCREEN, ICIBA_SCREEN, ASTRONAUTS_SCREEN, MAO_SELECT_SCREEN, TOXIC_SOUL_SCREEN};
+    // 首先检查note.json文件是否存在且有内容
+    bool hasNoteContent = false;
+    String noteContent = "";
     
-    // 查找当前屏幕在顺序数组中的索引
-    int currentIndex = 0;
-    for (int i = 0; i < 6; i++) {
-        if (screenOrder[i] == currentScreen) {
-            currentIndex = i;
-            break;
+    // 检查note.json文件是否存在
+    if (SPIFFS.exists("/note.json")) {
+        File noteFile = SPIFFS.open("/note.json", "r");
+        if (noteFile) {
+            DynamicJsonDocument doc(1024);
+            DeserializationError error = deserializeJson(doc, noteFile);
+            noteFile.close();
+            
+            if (!error && doc.containsKey("note")) {
+                noteContent = doc["note"].as<String>();
+                // 检查note内容是否不为空
+                if (!noteContent.isEmpty()) {
+                    hasNoteContent = true;
+                }
+            }
         }
     }
     
-    // 计算下一个屏幕的索引（循环）
-    int nextIndex = (currentIndex + 1) % 6;
-    
-    // 设置下一个屏幕
-    currentScreen = screenOrder[nextIndex];
+    // 如果有note内容，并且当前不是已经在留言板屏幕，则切换到留言板屏幕
+    if (hasNoteContent && currentScreen != NOTE_SCREEN) {
+        Serial.println("检测到note.json有内容，切换到留言板屏幕");
+        currentScreen = NOTE_SCREEN;
+    } else {
+        // 定义屏幕切换顺序：新闻 -> 日历 -> 金山词霸 -> 太空宇航员 -> 毛选 -> 乌鸡汤 -> 新闻...
+        static const ScreenState screenOrder[] = {NEWS_SCREEN, CALENDAR_SCREEN, ICIBA_SCREEN, ASTRONAUTS_SCREEN, MAO_SELECT_SCREEN, TOXIC_SOUL_SCREEN};
+        
+        // 查找当前屏幕在顺序数组中的索引
+        int currentIndex = 0;
+        for (int i = 0; i < 6; i++) {
+            if (screenOrder[i] == currentScreen) {
+                currentIndex = i;
+                break;
+            }
+        }
+        
+        // 计算下一个屏幕的索引（循环）
+        int nextIndex = (currentIndex + 1) % 6;
+        
+        // 设置下一个屏幕
+        currentScreen = screenOrder[nextIndex];
+    }
     
     // 先清空标题文本，实现"每次清空后再显示下一个"的效果
     if (title_label) {

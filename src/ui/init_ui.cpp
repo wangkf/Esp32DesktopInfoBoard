@@ -15,6 +15,7 @@ lv_obj_t* astronauts_label = nullptr;
 lv_obj_t* news_label = nullptr;
 lv_obj_t* calendar_label = nullptr;
 lv_obj_t* today_date_label = nullptr;
+lv_obj_t* note_label = nullptr;
 
 // 从config.h中获取屏幕尺寸，不再重复定义
 // 缓冲区设置 - 使用双缓冲区以提高显示性能
@@ -130,6 +131,15 @@ void initUI() {
   lv_obj_set_style_text_color(today_date_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
   lv_obj_align(today_date_label, LV_ALIGN_BOTTOM_RIGHT, -20, -150); // 调整位置，增加右侧和底部边距，确保完全显示
   lv_obj_add_flag(today_date_label, LV_OBJ_FLAG_HIDDEN);
+
+  // 创建留言板标签
+  note_label = lv_label_create(lv_scr_act());
+  lv_obj_set_style_text_font(note_label, &lvgl_font_song_16, 0);
+  lv_obj_set_style_text_color(note_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
+  lv_obj_set_width(note_label, screenWidth - 20);
+  lv_obj_align(note_label, LV_ALIGN_TOP_MID, 0, 110);
+  lv_label_set_long_mode(note_label, LV_LABEL_LONG_WRAP);
+  lv_obj_add_flag(note_label, LV_OBJ_FLAG_HIDDEN);
 
   Serial.println("UI元素初始化完成");
 }

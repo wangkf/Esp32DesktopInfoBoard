@@ -5,6 +5,7 @@
 void displayIcibaDataFromFile();     //从文件读取JSON数据并显示金山词霸每日信息
 void displayAstronautsDataFromFile();//从文件读取JSON数据并显示宇航员信息
 void displayNewsDataFromFile();      //从文件读取JSON数据并显示新闻信息
+void displayNoteDataFromFile();      //从文件读取JSON数据并显示留言板内容
 void displayCalendar();              // 显示日历信息
 void initDisplayManager();           //初始化显示管理器
 

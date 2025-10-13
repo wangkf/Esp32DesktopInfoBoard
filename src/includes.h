@@ -29,4 +29,7 @@
 // 网络模块
 #include "network/net_http.h"
 
+// mDNS支持
+#include <ESPmDNS.h>
+
 #endif // INCLUDES_H

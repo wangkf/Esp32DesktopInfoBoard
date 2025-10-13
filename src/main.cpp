@@ -96,6 +96,15 @@ void initWiFiAndNTP() {
     Serial.print("IP地址: ");
     Serial.println(WiFi.localIP());
     
+    // 初始化mDNS
+    if (!MDNS.begin("ESP32-InfoBoard")) {
+      Serial.println("Error setting up MDNS responder!");
+    } else {
+      Serial.println("mDNS responder started");
+      // 添加HTTP服务
+      MDNS.addService("http", "tcp", 80);
+    }
+    
     // 初始化NTP - 从ConfigManager获取时区配置
     int timezone = configManager->getNTPServerTimezone();
     long gmtOffset_sec = timezone * 3600; // 将时区转换为秒
@@ -125,6 +134,15 @@ void initWiFiAndNTP() {
       webConfigStartTime = millis();
       WebConfigServer::getInstance()->start(true); // true表示使用AP模式
       Serial.println("已启动热点模式Web配置，请连接热点ESP32-InfoBoard，访问192.168.4.1");
+      
+      // 在AP模式下也初始化mDNS
+      if (!MDNS.begin("ESP32-InfoBoard")) {
+        Serial.println("Error setting up MDNS responder in AP mode!");
+      } else {
+        Serial.println("mDNS responder started in AP mode");
+        // 添加HTTP服务
+        MDNS.addService("http", "tcp", 80);
+      }
       
       // 显示热点IP地址在屏幕右上角
       String apStatusText = "\uF013 192.168.4.1";
@@ -177,6 +195,9 @@ void handleButtonEvents() {
         WebConfigServer::getInstance()->stop();
         webConfigMode = false;
         Serial.println("已退出Web配置模式");
+        // 停止mDNS服务
+        MDNS.end();
+        Serial.println("mDNS responder stopped");
         // 重新连接WiFi
         initWiFiAndNTP();
       } else {
@@ -213,12 +234,22 @@ void handleButtonEvents() {
         bool useAPMode = (WiFi.status() != WL_CONNECTED);
         WebConfigServer::getInstance()->start(useAPMode);
         
+        // 在Web配置模式下初始化mDNS
+        if (!MDNS.begin("ESP32-InfoBoard")) {
+          Serial.println("Error setting up MDNS responder in Web config mode!");
+        } else {
+          Serial.println("mDNS responder started in Web config mode");
+          // 添加HTTP服务
+          MDNS.addService("http", "tcp", 80);
+        }
+        
         if (useAPMode) {
-          Serial.println("已进入Web配置模式，请连接热点ESP32-InfoBoard，访问192.168.4.1");
+          Serial.println("已进入Web配置模式，请连接热点ESP32-InfoBoard，访问192.168.4.1或http://ESP32-InfoBoard.local");
           TimeManager::getInstance()->setStatusInfo("\uF013 192.168.4.1", lv_color_hex(0xFF0000), false);
         } else {
           Serial.print("已进入Web配置模式，请访问当前IP地址: ");
           Serial.println(WiFi.localIP());
+          Serial.println("或者通过mDNS访问: http://ESP32-InfoBoard.local");
           char ipStr[20];
           WiFi.localIP().toString().toCharArray(ipStr, sizeof(ipStr));
           String statusText = "\uF012" + String(ipStr);
@@ -229,6 +260,9 @@ void handleButtonEvents() {
         WebConfigServer::getInstance()->stop();
         webConfigMode = false;
         Serial.println("已退出Web配置模式");
+        // 停止mDNS服务
+        MDNS.end();
+        Serial.println("mDNS responder stopped");
         // 重新连接WiFi
         initWiFiAndNTP();
       }

@@ -53,6 +53,7 @@ void WebConfigServer::init() {
     server.on("/restart", HTTP_POST, std::bind(&WebConfigServer::handleRestart, this));
     server.on("/json-files", HTTP_GET, std::bind(&WebConfigServer::handleJsonFile, this));
     server.on("/json-file", HTTP_GET, std::bind(&WebConfigServer::handleJsonFileContent, this));
+    server.on("/note", HTTP_POST, std::bind(&WebConfigServer::handleNote, this));
     server.onNotFound(std::bind(&WebConfigServer::handleNotFound, this));
 }
 
@@ -140,6 +141,19 @@ void WebConfigServer::handleRoot() {
     int timezone;
     getNTPServerTimezone(timezone);
     
+    // 读取当前的note内容
+    String noteContent = "";
+    File noteFile = SPIFFS.open("/note.json", "r");
+    if (noteFile) {
+        DynamicJsonDocument doc(1024);
+        DeserializationError error = deserializeJson(doc, noteFile);
+        noteFile.close();
+        
+        if (!error && doc.containsKey("note")) {
+            noteContent = doc["note"].as<String>();
+        }
+    }
+    
     String html = "";
     html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>ESP32信息板配置</title>",
            "<style>body{font-family:Arial,sans-serif;margin:20px;}",
@@ -147,6 +161,8 @@ void WebConfigServer::handleRoot() {
            "form{max-width:400px;margin:20px 0;}",
            "input[type=text],input[type=password],input[type=number]{width:100%;padding:10px;margin:8px 0;display:inline-block;",
            "border:1px solid #ccc;border-radius:4px;box-sizing:border-box;}",
+           "textarea{width:100%;height:200px;padding:10px;margin:8px 0;display:inline-block;",
+           "border:1px solid #ccc;border-radius:4px;box-sizing:border-box;resize:vertical;}",
            "input[type=submit]{background-color:#4CAF50;color:white;padding:14px 20px;margin:8px 0;border:none;",
            "border-radius:4px;cursor:pointer;}",
            "input[type=submit]:hover{background-color:#45a049;}",
@@ -170,9 +186,46 @@ void WebConfigServer::handleRoot() {
     html += "<h2>JSON文件查看</h2>";
     html += "<p><a href='/json-files'>查看所有JSON文件</a></p>";
     
+    // 添加留言板内容配置表单
+    html += "<h2>留言板内容配置</h2>";
+    html += "<form action='/note' method='post'>";
+    html += "留言内容: <textarea name='note'>" + noteContent + "</textarea><br>";
+    html += "<input type='submit' value='保存留言内容'>";
+    html += "</form>";
+    
     html += "</body></html>";
     
     server.send(200, "text/html", html);
+}
+
+/**
+ * 处理留言板内容请求
+ */
+void WebConfigServer::handleNote() {
+    if (server.hasArg("note")) {
+        String noteContent = server.arg("note");
+        
+        // 创建JSON文档
+        DynamicJsonDocument doc(1024);
+        doc["note"] = noteContent;
+        doc["update_time"] = millis(); // 保存时间戳
+        
+        // 打开文件进行写入
+        File noteFile = SPIFFS.open("/note.json", "w");
+        if (noteFile) {
+            // 序列化JSON到文件
+            serializeJson(doc, noteFile);
+            noteFile.close();
+            
+            Serial.println("留言内容保存成功");
+            server.send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>留言内容保存成功!</h1><p>下次切换屏幕时将显示新的留言内容。</p><p><a href='/'>返回首页</a></p></body></html>");
+        } else {
+            Serial.println("无法创建或打开note.json文件");
+            server.send(500, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>留言内容保存失败!</h1><p>无法创建或打开note.json文件</p><p><a href='/'>返回首页</a></p></body></html>");
+        }
+    } else {
+        server.send(400, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><h1>参数错误!</h1><p>缺少note参数</p><p><a href='/'>返回首页</a></p></body></html>");
+    }
 }
 
 /**

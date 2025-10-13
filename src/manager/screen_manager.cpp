@@ -28,6 +28,7 @@ ScreenManager* ScreenManager::getInstance() {
     if (instance == nullptr) {
         instance = new ScreenManager();
     }
+
     return instance;
 }
 
@@ -88,6 +89,24 @@ extern lv_obj_t* astronauts_label;
 if (astronauts_label) {
     lv_obj_add_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN);
 }
+    
+    // 隐藏新闻标签
+extern lv_obj_t* news_label;
+if (news_label) {
+    lv_obj_add_flag(news_label, LV_OBJ_FLAG_HIDDEN);
+}
+    
+    // 隐藏日历标签
+extern lv_obj_t* calendar_label;
+if (calendar_label) {
+    lv_obj_add_flag(calendar_label, LV_OBJ_FLAG_HIDDEN);
+}
+
+    // 隐藏当日日期大字体标签
+extern lv_obj_t* today_date_label;
+if (today_date_label) {
+    lv_obj_add_flag(today_date_label, LV_OBJ_FLAG_HIDDEN);
+}
 }
 
 /**
@@ -108,10 +127,64 @@ void ScreenManager::showCurrentScreen() {
         case ASTRONAUTS_SCREEN:
             showAstronautsScreen();
             break;
+        case NEWS_SCREEN:
+            showNewsScreen();
+            break;
+        case CALENDAR_SCREEN:
+            showCalendarScreen();
+            break;
         default:
             // 如果当前屏幕无效，默认显示毛选屏幕
             showMaoSelectScreen();
             break;
+    }
+}
+
+/**
+ * 显示日历屏幕
+ */
+void ScreenManager::showCalendarScreen() {
+    Serial.println("切换到日历屏幕");
+    
+    // 确保calendar_label被创建并显示
+    extern lv_obj_t* calendar_label;
+    if (calendar_label && lv_obj_is_valid(calendar_label)) {
+        lv_obj_clear_flag(calendar_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(calendar_label);
+    }
+    
+    // 确保today_date_label被创建并显示
+    extern lv_obj_t* today_date_label;
+    if (today_date_label && lv_obj_is_valid(today_date_label)) {
+        // 获取当前日期
+        time_t now;
+        struct tm timeinfo;
+        time(&now);
+        localtime_r(&now, &timeinfo);
+        int day = timeinfo.tm_mday;
+        
+        // 格式化日期为两位数字（如01, 02）
+        char dateStr[3];
+        sprintf(dateStr, "%02d", day);
+        
+        // 设置标签文本并显示
+        lv_label_set_text(today_date_label, dateStr);
+        lv_obj_clear_flag(today_date_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(today_date_label);
+    }
+    
+    // 显示日历信息
+    ::displayCalendar();
+    
+    // 更新屏幕标题和符号
+    if (screen_symbol_label && screen_title_btn && title_label) {
+        // 更新符号
+        lv_label_set_text(screen_symbol_label, "\uF073"); // 日历图标
+        // 更新标题文本
+        lv_label_set_text(title_label, "📅 日历");
+        
+        // 更新色块颜色
+        lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x800080), 0); // 紫色
     }
 }
 
@@ -121,8 +194,29 @@ void ScreenManager::showCurrentScreen() {
 void ScreenManager::toggleScreen() {
     // 隐藏所有屏幕元素
     hideAllScreens();
-    // 循环切换屏幕状态：毛选 -> 乌鸡汤 -> 金山词霸 -> 宇航员信息 -> 毛选...
-    currentScreen = static_cast<ScreenState>((currentScreen % 4) + 1);
+    
+    // 定义屏幕切换顺序：新闻 -> 日历 -> 金山词霸 -> 太空宇航员 -> 毛选 -> 乌鸡汤 -> 新闻...
+    static const ScreenState screenOrder[] = {NEWS_SCREEN, CALENDAR_SCREEN, ICIBA_SCREEN, ASTRONAUTS_SCREEN, MAO_SELECT_SCREEN, TOXIC_SOUL_SCREEN};
+    
+    // 查找当前屏幕在顺序数组中的索引
+    int currentIndex = 0;
+    for (int i = 0; i < 6; i++) {
+        if (screenOrder[i] == currentScreen) {
+            currentIndex = i;
+            break;
+        }
+    }
+    
+    // 计算下一个屏幕的索引（循环）
+    int nextIndex = (currentIndex + 1) % 6;
+    
+    // 设置下一个屏幕
+    currentScreen = screenOrder[nextIndex];
+    
+    // 先清空标题文本，实现"每次清空后再显示下一个"的效果
+    if (title_label) {
+        lv_label_set_text(title_label, "");
+    }
     
     // 显示当前屏幕
     showCurrentScreen();
@@ -162,6 +256,10 @@ void ScreenManager::refreshCurrentScreenData() {
             ::displayAstronautsDataFromFile();
             // 确保宇航员标签可见
             break;
+        case NEWS_SCREEN:
+            // 从文件加载并显示新闻数据
+            ::displayNewsDataFromFile();
+            break;
         default:
             break;
     }
@@ -170,6 +268,30 @@ void ScreenManager::refreshCurrentScreenData() {
 /**
  * 显示新闻屏幕
  */
+void ScreenManager::showNewsScreen() {
+    Serial.println("切换到新闻屏幕");
+    
+    // 确保news_label被创建并显示
+    extern lv_obj_t* news_label;
+    if (news_label && lv_obj_is_valid(news_label)) {
+        lv_obj_clear_flag(news_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(news_label);
+    }
+    
+    // 从文件加载并显示新闻数据
+    ::displayNewsDataFromFile();
+    
+    // 更新屏幕标题和符号
+    if (screen_symbol_label && screen_title_btn && title_label) {
+        // 更新符号
+        lv_label_set_text(screen_symbol_label, "\uF0AE"); // 新闻图标
+        // 更新标题文本
+        lv_label_set_text(title_label, " 每日新闻");
+        
+        // 更新色块颜色
+        lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x0000FF), 0); // 蓝色
+    }
+}
 
 
 /**

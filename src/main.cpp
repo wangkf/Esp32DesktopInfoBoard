@@ -150,7 +150,7 @@ void updateBrightness() {
     int brightness = map(lightValue, 0, 4095, 0, 255); 
     
     // 限制亮度值范围
-    brightness = constrain(brightness, 30, 255);
+    brightness = constrain(brightness, 5, 255);
     
     // 设置屏幕亮度
     ledcWrite(LED_CHANNEL, brightness);
@@ -389,7 +389,7 @@ void displayTask(void *pvParameters) {
           static lv_style_t style_line;
           lv_style_init(&style_line);
           lv_style_set_line_width(&style_line, 2); // 线条宽度
-          lv_style_set_line_color(&style_line, lv_color_hex(0x00FF00)); // 绿色
+          lv_style_set_line_color(&style_line, lv_color_hex(0xFF0000)); // 红色
           lv_style_set_line_rounded(&style_line, true);
           
           // 添加样式到线条对象

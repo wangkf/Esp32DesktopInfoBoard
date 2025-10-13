@@ -391,6 +391,8 @@
 #define LV_FONT_CUSTOM_DECLARE   LV_FONT_DECLARE(lvgl_font_song_16)
 // 禁用不兼容的lvgl_font_song4_16字体
 #define LVGL_FONT_SONG4_16 0
+// 禁用不兼容的lvgl_font_digital_108字体
+#define LVGL_FONT_DIGITAL_108 0
 
 /*Always set a default font*/
 #define LV_FONT_DEFAULT &lv_font_montserrat_14

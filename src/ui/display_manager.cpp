@@ -5,10 +5,13 @@
 #include <SPIFFS.h>
 #include <ArduinoJson.h>
 #include <lvgl.h>
+#include <time.h>
 
 // 外部变量声明
 extern lv_obj_t* iciba_label;
 extern lv_obj_t* astronauts_label;
+extern lv_obj_t* news_label;
+extern lv_obj_t* calendar_label;
 
 // 全局变量
 extern const uint32_t screenWidth;
@@ -108,6 +111,107 @@ void createAndInitLabel(lv_obj_t* &label, const char* labelName) {
     
     Serial.println("创建或重新创建了" + String(labelName));
   }
+}
+
+/**
+ * 显示日历信息
+ */
+void displayCalendar() {
+  Serial.println("显示日历信息");
+  
+  // 检查calendar_label是否已创建和有效
+  if (!calendar_label || !lv_obj_is_valid(calendar_label)) {
+    Serial.println("calendar_label无效，无法显示日历");
+    return;
+  }
+  
+  // 获取当前时间
+  time_t now;
+  struct tm timeinfo;
+  time(&now);
+  localtime_r(&now, &timeinfo);
+  
+  // 获取当前年份、月份和日期
+  int year = timeinfo.tm_year + 1900;
+  int month = timeinfo.tm_mon + 1;
+  int day = timeinfo.tm_mday;
+  
+  // 计算当月第一天是星期几
+  struct tm firstDayOfMonth = timeinfo;
+  firstDayOfMonth.tm_mday = 1;
+  mktime(&firstDayOfMonth);
+  int firstDayWeekday = firstDayOfMonth.tm_wday;
+  
+  // 计算当月有多少天
+  struct tm lastDayOfMonth = timeinfo;
+  lastDayOfMonth.tm_mday = 1;
+  lastDayOfMonth.tm_mon += 1;
+  mktime(&lastDayOfMonth);
+  lastDayOfMonth.tm_mday = 0; // 设置为0，回退到上个月的最后一天
+  mktime(&lastDayOfMonth);
+  int daysInMonth = lastDayOfMonth.tm_mday;
+  
+  // 构建日历文本
+  String calendarText = "";
+  
+  // 添加月份标题
+  calendarText += String(year) + "年" + String(month) + "月日历\n\n";
+  
+  // 添加星期标题
+  calendarText += "日  一  二  三  四  五  六\n";
+  
+  // 添加日期，确保当前日期突出显示
+  int dayCount = 1;
+  
+  // 填充第一行的空格
+  for (int i = 0; i < firstDayWeekday; i++) {
+    calendarText += "    "; // 四个空格
+  }
+  
+  // 填充日期
+  for (int i = firstDayWeekday; i < 7; i++) {
+    if (dayCount == day) {
+      // 突出显示当前日期
+      calendarText += "【";
+      if (dayCount < 10) {
+        calendarText += "0";
+      }
+      calendarText += String(dayCount) + "】";
+    } else {
+      if (dayCount < 10) {
+        calendarText += "0";
+      }
+      calendarText += String(dayCount) + "  ";
+    }
+    dayCount++;
+  }
+  calendarText += "\n";
+  
+  // 填充剩余的日期
+  while (dayCount <= daysInMonth) {
+    for (int i = 0; i < 7 && dayCount <= daysInMonth; i++) {
+      if (dayCount == day) {
+        // 突出显示当前日期
+        calendarText += "【";
+        if (dayCount < 10) {
+          calendarText += "0";
+        }
+        calendarText += String(dayCount) + "】";
+      } else {
+        if (dayCount < 10) {
+          calendarText += "0";
+        }
+        calendarText += String(dayCount) + "  ";
+      }
+      dayCount++;
+    }
+    calendarText += "\n";
+  }
+  
+  // 更新标签文本
+  lv_label_set_text(calendar_label, calendarText.c_str());
+  
+  Serial.println("日历显示完成");
 }
 /**
  * 从文件读取JSON数据
@@ -343,6 +447,88 @@ void displayAstronautsDataFromFile() {
       lv_label_set_text(astronauts_label, "JSON格式错误：people字段格式不正确");
       lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
     }
+  }
+}
+
+/**
+ * 显示新闻信息
+ */
+void displayNewsDataFromFile() {
+  Serial.println("从文件显示新闻数据");
+  
+  // 确保news_label已创建和初始化
+  if (!news_label) {
+    Serial.println("news_label未创建，创建并初始化");
+    news_label = lv_label_create(lv_scr_act());
+    lv_obj_set_style_text_font(news_label, &lvgl_font_song_16, 0);
+    lv_obj_set_style_text_color(news_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_width(news_label, screenWidth - 20);
+    lv_obj_set_height(news_label, screenHeight - 120);
+    lv_obj_align(news_label, LV_ALIGN_TOP_LEFT, 10, 100);
+    lv_label_set_long_mode(news_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_radius(news_label, 10, 0);
+    lv_obj_set_style_bg_color(news_label, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_opa(news_label, 100, 0);
+  }
+  
+  JsonDocument doc;
+  if (!readJsonFromFile("/news.json", doc)) {
+    if (news_label && lv_obj_is_valid(news_label)) {
+      lv_label_set_text(news_label, "无法读取新闻数据文件");
+      lv_obj_clear_flag(news_label, LV_OBJ_FLAG_HIDDEN);
+    }
+    return;
+  }
+
+  // 获取更新时间
+  String updateTime = "";
+  if (doc.containsKey("update_time")) {
+    if (doc["update_time"].is<unsigned long>()) {
+      // 将时间戳转换为可读格式
+      unsigned long timestamp = doc["update_time"].as<unsigned long>();
+      time_t now = timestamp / 1000;
+      struct tm *timeinfo = localtime(&now);
+      if (timeinfo != nullptr) {
+        char timeString[20];
+        strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", timeinfo);
+        updateTime = String(timeString);
+      }
+    } else if (doc["update_time"].is<const char*>()) {
+      updateTime = doc["update_time"].as<const char*>();
+    }
+  }
+  
+  // 构建新闻显示文本
+//  String newsText = "今日头条新闻";
+//  if (!updateTime.isEmpty()) {
+//    newsText += " (" + updateTime + ")";
+//  }
+//  newsText += "\n\n";
+  String newsText = ""; 
+  // 检查是否有新闻列表
+  if (doc.containsKey("result") && doc["result"].is<JsonArray>()) {
+    JsonArray newsArray = doc["result"].as<JsonArray>();
+    
+    // 显示前几条新闻
+    int displayCount = min(static_cast<int>(newsArray.size()), 14); // 最多显示5条新闻
+    for (int i = 0; i < displayCount; i++) {
+      String newsItem = newsArray[i].as<String>();      
+        newsText += "" + newsItem + "\n";
+    }
+  } else {
+    // 处理简单的字符串格式新闻数据
+    if (doc.containsKey("result") && doc["result"].is<const char*>()) {
+      newsText += doc["result"].as<const char*>();
+    } else {
+      newsText += "暂无新闻内容";
+    }
+  }
+  
+  // 更新新闻标签
+  if (news_label && lv_obj_is_valid(news_label)) {
+    lv_label_set_text(news_label, newsText.c_str());
+    lv_obj_clear_flag(news_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(news_label);
   }
 }
 

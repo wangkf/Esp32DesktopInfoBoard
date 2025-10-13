@@ -19,6 +19,7 @@ DataManager* DataManager::instance = nullptr;
 volatile bool DataManager::shouldUpdateAllData = false;
 volatile bool DataManager::shouldUpdateICIBADaily = false;
 volatile bool DataManager::shouldUpdateAstronauts = false;
+volatile bool DataManager::shouldUpdateNews = false;
 
 /**
  * 私有构造函数
@@ -27,14 +28,17 @@ DataManager::DataManager() {
     // 初始化缓存更新时间
     lastIcibaUpdateDate = 0;
     lastAstronautsUpdateDate = 0;
+    lastNewsUpdateTime = 0;
     
     // 初始化强制刷新标志
     forceICIBARefresh = false;
     forceAstronautsRefresh = false;
+    forceNewsRefresh = false;
     
     // 初始化数据缓存
     icibaData = "";
     astronautsData = "";
+    newsData = "";
     
     // 初始化状态标志
     isFirstStartup = true;
@@ -126,6 +130,7 @@ bool DataManager::checkTimeValidity() {
 void DataManager::checkAndUpdateAllCaches() {
     checkAndUpdateCache(ICIBA_DATA);
     checkAndUpdateCache(ASTRONAUTS_DATA);
+    checkAndUpdateCache(NEWS_DATA);
 }
 
 /**
@@ -179,6 +184,21 @@ bool DataManager::checkAndUpdateCache(DataType type) {
             break;
         }
             
+        case NEWS_DATA: {
+            unsigned long currentTime = millis();
+            if (forceNewsRefresh || 
+                (isTimeValid && (lastNewsUpdateTime == 0 || currentTime - lastNewsUpdateTime >= CACHE_TIME_30MIN))) {
+                result = fetchData(NEWS_DATA, newsData);
+                if (result) {
+                    lastNewsUpdateTime = currentTime;
+                    forceNewsRefresh = false;
+                    Serial.println("新闻数据更新成功");
+                    saveCacheData();
+                }
+            }
+            break;
+        }
+            
         default:
             break;
     }
@@ -192,6 +212,7 @@ bool DataManager::checkAndUpdateCache(DataType type) {
 void DataManager::forceRefreshAllData() {
     forceICIBARefresh = true;
     forceAstronautsRefresh = true;
+    forceNewsRefresh = true;
     
     // 立即检查更新
     checkAndUpdateAllCaches();
@@ -244,6 +265,7 @@ bool DataManager::fetchData(DataType type, String &result) {
     switch (type) {
         case ICIBA_DATA:     url = ICIBA_API_URL;     break;// 实现每日一句数据获取逻辑 
         case ASTRONAUTS_DATA:url = ASTRONAUTS_API_URL;break;// 实现宇航员数据获取逻辑 
+        case NEWS_DATA:      url = NEWS_API_URL;      break;// 实现新闻数据获取逻辑 
         default:
             Serial.println("DataManager: 未知的数据类型");
             return false;
@@ -279,6 +301,11 @@ void DataManager::dataTask(void *pvParameters) {
         if (shouldUpdateAstronauts) {
             dataManager->checkAndUpdateCache(ASTRONAUTS_DATA);
             shouldUpdateAstronauts = false;
+        }
+        
+        if (shouldUpdateNews) {
+            dataManager->checkAndUpdateCache(NEWS_DATA);
+            shouldUpdateNews = false;
         }
         
         // 检查准点更新
@@ -338,6 +365,10 @@ void DataManager::internalSaveCacheData() {
         saveDataToJsonFile("/astronauts.json", astronautsData, false);
     }
     
+    if (!newsData.isEmpty()) {
+        saveDataToJsonFile("/news.json", newsData, false);
+    }
+    
     Serial.println("缓存数据保存完成");
 }
 
@@ -358,6 +389,13 @@ void DataManager::internalLoadCacheData() {
         astronautsData = astronautsFile.readString();
         astronautsFile.close();
         Serial.println("宇航员缓存加载成功");
+    }
+    
+    File newsFile = SPIFFS.open("/news.json", "r");
+    if (newsFile) {
+        newsData = newsFile.readString();
+        newsFile.close();
+        Serial.println("新闻缓存加载成功");
     }
 }
 

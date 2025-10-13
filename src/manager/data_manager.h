@@ -11,6 +11,7 @@
 // API URL常量定义
 #define ASTRONAUTS_API_URL "http://api.open-notify.org/astros.json"
 #define ICIBA_API_URL      "https://open.iciba.com/dsapi/"
+#define NEWS_API_URL       "http://YOU_NEWS_API/hotnews/?sn=test"
 
 // 缓存时间定义（毫秒）
 #define CACHE_TIME_2HOURS 2 * 60 * 60 * 1000 // 2小时
@@ -20,7 +21,8 @@
 // 数据类型枚举
 enum DataType {
     ICIBA_DATA,
-    ASTRONAUTS_DATA
+    ASTRONAUTS_DATA,
+    NEWS_DATA
 };
 
 /**
@@ -34,14 +36,17 @@ private:
     // 缓存相关变量
     unsigned int lastIcibaUpdateDate;     // 上次ICIBA数据更新日期 (YYYYMMDD格式)
     unsigned int lastAstronautsUpdateDate; // 上次宇航员数据更新日期 (YYYYMMDD格式)
+    unsigned int lastNewsUpdateTime;      // 上次新闻数据更新时间
     
     // 强制刷新标志
     bool forceICIBARefresh;               // 强制刷新ICIBA数据
     bool forceAstronautsRefresh;          // 强制刷新宇航员数据
+    bool forceNewsRefresh;                // 强制刷新新闻数据
     
     // 数据缓存
     String icibaData;           // ICIBA数据缓存
     String astronautsData;      // 宇航员数据缓存
+    String newsData;            // 新闻数据缓存
     
     // 缓存是否有效
     bool isFirstStartup;        // 是否首次启动
@@ -55,6 +60,7 @@ private:
     static volatile bool shouldUpdateAllData; // 全局标志，用于触发数据更新
     static volatile bool shouldUpdateICIBADaily; // 全局标志，用于触发每日一句更新
     static volatile bool shouldUpdateAstronauts; // 全局标志，用于触发宇航员数据更新
+    static volatile bool shouldUpdateNews; // 全局标志，用于触发新闻数据更新
     
     // 检查NTP时间是否有效
     bool checkTimeValidity();

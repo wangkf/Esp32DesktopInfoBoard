@@ -6,11 +6,15 @@
 // 声明全局字体
 extern lv_font_t lvgl_font_digital_24;
 extern lv_font_t lvgl_font_digital_48;
+extern lv_font_t lvgl_font_digital_64;
 // LVGL对象定义
 lv_obj_t* mao_select_label = nullptr;
 lv_obj_t* toxic_soul_label = nullptr;
 lv_obj_t* iciba_label = nullptr;
 lv_obj_t* astronauts_label = nullptr;
+lv_obj_t* news_label = nullptr;
+lv_obj_t* calendar_label = nullptr;
+lv_obj_t* today_date_label = nullptr;
 
 // 从config.h中获取屏幕尺寸，不再重复定义
 // 缓冲区设置 - 使用双缓冲区以提高显示性能
@@ -101,6 +105,31 @@ void initUI() {
   lv_obj_align(astronauts_label, LV_ALIGN_TOP_MID, 0, 110);
   lv_label_set_long_mode(astronauts_label, LV_LABEL_LONG_WRAP);
   lv_obj_add_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN);
+
+  // 创建新闻标签
+  news_label = lv_label_create(lv_scr_act());
+  lv_obj_set_style_text_font(news_label, &lvgl_font_song_16, 0);
+  lv_obj_set_style_text_color(news_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
+  lv_obj_set_width(news_label, screenWidth - 20);
+  lv_obj_align(news_label, LV_ALIGN_TOP_MID, 0, 110);
+  lv_label_set_long_mode(news_label, LV_LABEL_LONG_WRAP);
+  lv_obj_add_flag(news_label, LV_OBJ_FLAG_HIDDEN);
+
+  // 创建日历标签
+  calendar_label = lv_label_create(lv_scr_act());
+  lv_obj_set_style_text_font(calendar_label, &lvgl_font_song_16, 0);
+  lv_obj_set_style_text_color(calendar_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
+  lv_obj_set_width(calendar_label, screenWidth - 20);
+  lv_obj_align(calendar_label, LV_ALIGN_TOP_MID, 0, 110);
+  lv_label_set_long_mode(calendar_label, LV_LABEL_LONG_WRAP);
+  lv_obj_add_flag(calendar_label, LV_OBJ_FLAG_HIDDEN);
+
+  // 创建当日日期大字体标签（日历页右下方，位于config_label上方靠右边框）
+  today_date_label = lv_label_create(lv_scr_act());
+  lv_obj_set_style_text_font(today_date_label, &lvgl_font_digital_48, 0); // 使用已定义的字体
+  lv_obj_set_style_text_color(today_date_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
+  lv_obj_align(today_date_label, LV_ALIGN_BOTTOM_RIGHT, -20, -150); // 调整位置，增加右侧和底部边距，确保完全显示
+  lv_obj_add_flag(today_date_label, LV_OBJ_FLAG_HIDDEN);
 
   Serial.println("UI元素初始化完成");
 }

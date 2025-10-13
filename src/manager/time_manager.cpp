@@ -122,7 +122,7 @@ void TimeManager::init() {
     static lv_style_t style_line;
     lv_style_init(&style_line);
     lv_style_set_line_width(&style_line, 2); // 增加宽度使线条更明显
-    lv_style_set_line_color(&style_line, lv_palette_main(LV_PALETTE_GREEN));
+    lv_style_set_line_color(&style_line, lv_palette_main(LV_PALETTE_RED));
     lv_style_set_line_rounded(&style_line, true);
 
     // 1. 在日期和星期标签下方添加绿色横线

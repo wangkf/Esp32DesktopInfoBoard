@@ -33,6 +33,8 @@ private:
     void showToxicSoulScreen();
     void showIcibaScreen();
     void showAstronautsScreen();
+    void showNewsScreen();
+    void showCalendarScreen();
     
     // 显示当前屏幕
     void showCurrentScreen();

@@ -378,8 +378,8 @@
 #define LV_FONT_MONTSERRAT_12_SUBPX      0
 #define LV_FONT_MONTSERRAT_28_COMPRESSED 0  /*bpp = 3*/
 #define LV_FONT_DEJAVU_16_PERSIAN_HEBREW 0  /*Hebrew, Arabic, Persian letters and all their forms*/
-#define LV_FONT_SONG_16            0  /*1000 most common CJK radicals*/
 #define LVGL_FONT_SONG_16          1  /*Custom song font (使用与LVGL 8.3.7兼容的版本)*/
+#define LVGL_FONT_DIGITAL_108 1
 
 /*Pixel perfect monospace fonts*/
 #define LV_FONT_UNSCII_8  0
@@ -391,8 +391,7 @@
 #define LV_FONT_CUSTOM_DECLARE   LV_FONT_DECLARE(lvgl_font_song_16)
 // 禁用不兼容的lvgl_font_song4_16字体
 #define LVGL_FONT_SONG4_16 0
-// 禁用不兼容的lvgl_font_digital_108字体
-#define LVGL_FONT_DIGITAL_108 0
+
 
 /*Always set a default font*/
 #define LV_FONT_DEFAULT &lv_font_montserrat_14

@@ -291,12 +291,7 @@ void displayIcibaDataFromFile() {
   }
   
   // 构建金山词霸显示文本，在第一行右边括号中显示更新时间
-  String icibaText = "今日格言：";
-  if (!updateTime.isEmpty()) {
-    icibaText += " (" + updateTime + ")";
-  }
-  icibaText += "\n";
-  
+  String icibaText = "";
   // 保存图片URL变量
   String fenxiangImgUrl = "";
 
@@ -566,19 +561,13 @@ void displayNewsDataFromFile() {
     }
   }
   
-  // 构建新闻显示文本
-//  String newsText = "今日头条新闻";
-//  if (!updateTime.isEmpty()) {
-//    newsText += " (" + updateTime + ")";
-//  }
-//  newsText += "\n\n";
   String newsText = ""; 
   // 检查是否有新闻列表
   if (doc.containsKey("result") && doc["result"].is<JsonArray>()) {
     JsonArray newsArray = doc["result"].as<JsonArray>();
     
     // 显示前几条新闻
-    int displayCount = min(static_cast<int>(newsArray.size()), 14); // 最多显示5条新闻
+    int displayCount = min(static_cast<int>(newsArray.size()), 16); // 最多显示5条新闻
     for (int i = 0; i < displayCount; i++) {
       String newsItem = newsArray[i].as<String>();      
         newsText += "" + newsItem + "\n";

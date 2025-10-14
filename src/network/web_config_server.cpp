@@ -13,7 +13,7 @@ void WebConfigServer::handleRestart() {
     
     // 发送重启确认页面
     String html = "";
-    html += "<!DOCTYPE html><html><body><h1>系统重启中...</h1>";
+    html += "<!DOCTYPE html><html><body><meta charset='UTF-8'><h1>系统重启中...</h1>";
     html += "<p>设备将在3秒后重启，请稍候...</p>";
     html += "</body></html>";
     
@@ -63,23 +63,18 @@ void WebConfigServer::init() {
  */
 bool WebConfigServer::start(bool useAPMode) {
     Serial.println("启动Web配置服务器...");
-    
     if (useAPMode) {
         // 断开当前WiFi连接
         WiFi.disconnect();
         delay(1000);
-        
         // 设置为接入点模式
         WiFi.softAP(apSSID, apPassword);
-        
         // 等待接入点启动
         delay(2000);
-        
         // 获取接入点IP地址
         IPAddress apIP = WiFi.softAPIP();
         Serial.print("接入点IP地址: ");
-        Serial.println(apIP);
-        
+        Serial.println(apIP);   
         Serial.println("Web配置服务器已启动，访问 192.168.4.1 进行配置");
     } else {
         // 使用STA模式（已连接WiFi的情况下）
@@ -134,12 +129,11 @@ bool WebConfigServer::isServerRunning() {
  * 处理主页请求
  */
 void WebConfigServer::handleRoot() {
-    String ssid, password;
-    readWiFiConfig(ssid, password);
+    // 检查当前是否为AP模式（配置模式）
+    bool isAPMode = (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA);
     
-
+    String ssid, password;
     int timezone;
-    getNTPServerTimezone(timezone);
     
     // 读取当前的note内容
     String noteContent = "";
@@ -155,38 +149,60 @@ void WebConfigServer::handleRoot() {
     }
     
     String html = "";
-    html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>ESP32信息板配置</title>",
-           "<style>body{font-family:Arial,sans-serif;margin:20px;}",
-           "h1{color:#333;}",
-           "form{max-width:400px;margin:20px 0;}",
-           "input[type=text],input[type=password],input[type=number]{width:100%;padding:10px;margin:8px 0;display:inline-block;",
-           "border:1px solid #ccc;border-radius:4px;box-sizing:border-box;}",
-           "textarea{width:100%;height:200px;padding:10px;margin:8px 0;display:inline-block;",
-           "border:1px solid #ccc;border-radius:4px;box-sizing:border-box;resize:vertical;}",
-           "input[type=submit]{background-color:#4CAF50;color:white;padding:14px 20px;margin:8px 0;border:none;",
-           "border-radius:4px;cursor:pointer;}",
-           "input[type=submit]:hover{background-color:#45a049;}",
-           "a{color:#0066cc;}</style></head><body>";
     
-    html += "<h1>ESP32信息板配置</h1>";
+    if (isAPMode) {
+        // 配置模式 - 显示完整配置页面
+        readWiFiConfig(ssid, password);
+        getNTPServerTimezone(timezone);
+        
+        html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>ESP32信息板配置</title>",
+               "<style>body{font-family:Arial,sans-serif;margin:20px;}",
+               "h1{color:#333;}",
+               "form{max-width:400px;margin:20px 0;}",
+               "input[type=text],input[type=password],input[type=number]{width:100%;padding:10px;margin:8px 0;display:inline-block;",
+               "border:1px solid #ccc;border-radius:4px;box-sizing:border-box;}",
+               "textarea{width:100%;height:200px;padding:10px;margin:8px 0;display:inline-block;",
+               "border:1px solid #ccc;border-radius:4px;box-sizing:border-box;resize:vertical;}",
+               "input[type=submit]{background-color:#4CAF50;color:white;padding:14px 20px;margin:8px 0;border:none;",
+               "border-radius:4px;cursor:pointer;}",
+               "input[type=submit]:hover{background-color:#45a049;}",
+               "a{color:#0066cc;}</style></head><body>";
+        
+        html += "<h1>ESP32信息板配置</h1>";
+        
+        // 合并后的配置表单
+        html += "<form action='/config' method='post'>";
+        html += "WiFi名称: <input type='text' name='ssid' value='" + ssid + "'><br>";
+        html += "WiFi密码: <input type='password' name='password' value='" + password + "'><br>";
+        html += "NTP时区: <input type='number' name='timezone' value='" + String(timezone) + "'>(整数，如北京时间为8)<br>";
+        html += "<input type='submit' value='保存配置'>";
+        html += "</form>";
+        
+        // 添加重启系统按钮
+        html += "<form action='/restart' method='post'>";
+        html += "<input type='submit' value='重启系统'>";
+        html += "</form>";
+        
+        html += "<h2>JSON文件查看</h2>";
+        html += "<p><a href='/json-files'>查看所有JSON文件</a></p>";
+    } else {
+        // 普通模式（已联网）- 显示简化页面
+        html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>ESP32信息板</title>",
+               "<style>body{font-family:Arial,sans-serif;margin:20px;}",
+               "h1{color:#333;}",
+               "form{max-width:400px;margin:20px 0;}",
+               "textarea{width:100%;height:200px;padding:10px;margin:8px 0;display:inline-block;",
+               "border:1px solid #ccc;border-radius:4px;box-sizing:border-box;resize:vertical;}",
+               "input[type=submit]{background-color:#4CAF50;color:white;padding:14px 20px;margin:8px 0;border:none;",
+               "border-radius:4px;cursor:pointer;}",
+               "input[type=submit]:hover{background-color:#45a049;}",
+               "a{color:#0066cc;}</style></head><body>";
+        
+        html += "<h1>ESP32信息板</h1>";
+        html += "<p>设备已成功连接网络，当前IP地址: " + WiFi.localIP().toString() + "</p>";
+    }
     
-    // 合并后的配置表单
-    html += "<form action='/config' method='post'>";
-    html += "WiFi名称: <input type='text' name='ssid' value='" + ssid + "'><br>";
-    html += "WiFi密码: <input type='password' name='password' value='" + password + "'><br>";
-    html += "NTP时区: <input type='number' name='timezone' value='" + String(timezone) + "'>(整数，如北京时间为8)<br>";
-    html += "<input type='submit' value='保存配置'>";
-    html += "</form>";
-    
-    // 添加重启系统按钮
-    html += "<form action='/restart' method='post'>";
-    html += "<input type='submit' value='重启系统'>";
-    html += "</form>";
-    
-    html += "<h2>JSON文件查看</h2>";
-    html += "<p><a href='/json-files'>查看所有JSON文件</a></p>";
-    
-    // 添加留言板内容配置表单
+    // 两种模式都显示留言板功能
     html += "<h2>留言板内容配置</h2>";
     html += "<form action='/note' method='post'>";
     html += "留言内容: <textarea name='note'>" + noteContent + "</textarea><br>";
@@ -428,7 +444,7 @@ void WebConfigServer::handleJsonFileContent() {
         
         server.send(200, "text/html", html);
     } else {
-        server.send(400, "text/html", "<!DOCTYPE html><html><body><h1>参数错误!</h1></body></html>");
+        server.send(400, "text/html", "<!DOCTYPE html><html><body><meta charset='UTF-8'><h1>参数错误!</h1></body></html>");
     }
 }
 

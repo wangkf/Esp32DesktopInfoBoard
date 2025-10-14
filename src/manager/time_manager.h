@@ -18,6 +18,7 @@ private:
     lv_obj_t* hour_minute_label;  // 时分钟标签
     lv_obj_t* second_label;       // 秒钟标签
     lv_obj_t* status_label;       // 状态信息标签
+    lv_obj_t* ip_label;           // IP地址标签
     
     // 时间变量
     int currentHour;              // 当前小时
@@ -55,6 +56,12 @@ public:
     
     // 清除状态信息
     void clearStatusInfo();
+    
+    // 设置IP地址信息
+    void setIpInfo(const char* info, lv_color_t color);
+    
+    // 清除IP地址信息
+    void clearIpInfo();
     
     // 获取日期标签
     lv_obj_t* getDateLabel();

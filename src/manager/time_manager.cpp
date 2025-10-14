@@ -45,6 +45,7 @@ TimeManager::TimeManager() {
     hour_minute_label = nullptr;
     second_label = nullptr;
     status_label = nullptr;
+    ip_label = nullptr;
 }
 
 /**
@@ -113,6 +114,17 @@ void TimeManager::init() {
         lv_label_set_text(status_label, ""); // 初始为空
         // 启用自动换行
         lv_label_set_long_mode(status_label, LV_LABEL_LONG_WRAP);
+    }
+    
+    // === IP地址标签（ip_label）=== 位置：屏幕右上角
+    if (!ip_label) {
+        ip_label = lv_label_create(lv_scr_act());
+        lv_obj_set_style_text_font(ip_label, &lvgl_font_song_16, 0); // 16像素宋体
+        lv_obj_set_style_text_color(ip_label, lv_color_hex(0xFF0000), 0); // 默认红色
+        lv_obj_align(ip_label, LV_ALIGN_TOP_RIGHT, -2, 2); // 右上角对齐，x偏移-2，y偏移2
+        lv_label_set_text(ip_label, ""); // 初始为空
+        lv_label_set_long_mode(ip_label, LV_LABEL_LONG_SCROLL_CIRCULAR); // 滚动显示
+        lv_obj_set_width(ip_label, screenWidth / 2-60); // 设置宽度
     }
     
     // 初始化时强制更新分钟显示
@@ -274,6 +286,26 @@ void TimeManager::setStatusInfo(const char* info, lv_color_t color, bool scroll)
 void TimeManager::clearStatusInfo() {
     if (status_label) {
         lv_label_set_text(status_label, "");
+    }
+}
+
+/**
+ * 设置IP地址信息
+ */
+void TimeManager::setIpInfo(const char* info, lv_color_t color) {
+    if (ip_label) {
+        lv_label_set_text(ip_label, info);
+        lv_obj_set_style_text_color(ip_label, color, 0);
+        lv_obj_clear_flag(ip_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
+    }
+}
+
+/**
+ * 清除IP地址信息
+ */
+void TimeManager::clearIpInfo() {
+    if (ip_label) {
+        lv_label_set_text(ip_label, "");
     }
 }
 

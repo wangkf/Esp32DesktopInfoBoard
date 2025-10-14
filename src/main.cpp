@@ -445,9 +445,7 @@ void displayTask(void *pvParameters) {
           lv_obj_move_foreground(config_line);
         }
       }
-      
-      // 设置配置模式图标状态
-      ScreenManager::getInstance()->setConfigIconStatus(true);
+
     } else {
       // 正常模式下的操作
       // 更新时间显示
@@ -455,9 +453,6 @@ void displayTask(void *pvParameters) {
       
       // 处理自动换屏
       handleAutoScreenChange();
-      
-      // 设置非配置模式图标状态
-      ScreenManager::getInstance()->setConfigIconStatus(false);
       
       // 清除状态标签显示内容
       TimeManager::getInstance()->clearStatusInfo();

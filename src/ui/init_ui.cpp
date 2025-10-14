@@ -2,10 +2,12 @@
 #include <lvgl.h>
 #include <TFT_eSPI.h>
 #include "config/config.h"
+#include "lv_conf_internal.h"
 
 // 声明全局字体
 extern lv_font_t lvgl_font_digital_24;
 extern lv_font_t lvgl_font_digital_48;
+extern lv_font_t lvgl_font_digital_108;
 extern lv_font_t lvgl_font_digital_64;
 // LVGL对象定义
 lv_obj_t* mao_select_label = nullptr;
@@ -127,9 +129,9 @@ void initUI() {
 
   // 创建当日日期大字体标签（日历页右下方，位于config_label上方靠右边框）
   today_date_label = lv_label_create(lv_scr_act());
-  lv_obj_set_style_text_font(today_date_label, &lvgl_font_digital_48, 0); // 使用已定义的字体
+  lv_obj_set_style_text_font(today_date_label, &lvgl_font_digital_108, 0); // 使用已定义的字体
   lv_obj_set_style_text_color(today_date_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
-  lv_obj_align(today_date_label, LV_ALIGN_BOTTOM_RIGHT, -20, -150); // 调整位置，增加右侧和底部边距，确保完全显示
+  lv_obj_align(today_date_label, LV_ALIGN_BOTTOM_RIGHT, -20, -50); // 调整位置，增加右侧和底部边距，确保完全显示
   lv_obj_add_flag(today_date_label, LV_OBJ_FLAG_HIDDEN);
 
   // 创建留言板标签

@@ -64,7 +64,7 @@ void ScreenManager::init() {
  * 隐藏所有屏幕元素
  */
 void ScreenManager::hideAllScreens() {
-    Serial.println("隐藏所有屏幕元素");
+    Serial.println("--隐藏所有屏幕元素");
     
     // 隐藏毛选标签
 extern lv_obj_t* mao_select_label;
@@ -178,7 +178,7 @@ void ScreenManager::showCurrentScreen() {
  * 显示日历屏幕
  */
 void ScreenManager::showCalendarScreen() {
-    Serial.println("切换到日历屏幕");
+    Serial.print("切换到日历屏幕：");
     
     // 确保calendar_label被创建并显示
     extern lv_obj_t* calendar_label;
@@ -329,7 +329,7 @@ void ScreenManager::refreshCurrentScreenData() {
  * 显示新闻屏幕
  */
 void ScreenManager::showNewsScreen() {
-    Serial.println("切换到新闻屏幕");
+    Serial.print("切换到新闻屏幕：");
     
     // 确保news_label被创建并显示
     extern lv_obj_t* news_label;
@@ -356,7 +356,7 @@ void ScreenManager::showNewsScreen() {
  * 显示主席语录屏幕
  */
 void ScreenManager::showMaoSelectScreen() {
-    Serial.println("切换到主席语录屏幕");
+    Serial.print("切换到主席语录屏幕：");
     
     // 显示随机的主席语录
     showRandomMaoSelect();
@@ -375,7 +375,7 @@ void ScreenManager::showMaoSelectScreen() {
  * 显示乌鸡汤屏幕
  */
 void ScreenManager::showToxicSoulScreen() {
-    Serial.println("切换到乌鸡汤屏幕");
+    Serial.print("切换到乌鸡汤屏幕：");
     
     // 显示随机的乌鸡汤
     showRandomToxicSoul();
@@ -394,17 +394,15 @@ void ScreenManager::showToxicSoulScreen() {
  * 显示金山词霸每日信息屏幕
  */
 void ScreenManager::showIcibaScreen() {
-    Serial.println("切换到金山词霸每日信息屏幕");
+    Serial.print("切换到金山词霸每日信息屏幕：");
     
     // 显示金山词霸标签
 extern lv_obj_t* iciba_label;
 if (iciba_label) {
     lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN);
 }
-    
     // 首先尝试从文件显示金山词霸数据
     ::displayIcibaDataFromFile();
-    
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
       // 更新标题文本
@@ -419,7 +417,7 @@ if (iciba_label) {
  * 显示宇航员信息屏幕
  */
 void ScreenManager::showAstronautsScreen() {
-    Serial.println("切换到宇航员信息屏幕");
+    Serial.print("切换到宇航员信息屏幕：");
     
     // 创建并显示宇航员标签
 extern lv_obj_t* astronauts_label;

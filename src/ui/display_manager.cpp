@@ -117,7 +117,7 @@ void createAndInitLabel(lv_obj_t* &label, const char* labelName) {
  * 显示日历信息
  */
 void displayCalendar() {
-  Serial.println("显示日历信息");
+  Serial.print("显示日历信息");
   
   // 检查calendar_label是否已创建和有效
   if (!calendar_label || !lv_obj_is_valid(calendar_label)) {
@@ -211,7 +211,7 @@ void displayCalendar() {
   // 更新标签文本
   lv_label_set_text(calendar_label, calendarText.c_str());
   
-  Serial.println("日历显示完成");
+  Serial.print("，日历显示完成");
 }
 /**
  * 从文件读取JSON数据
@@ -251,7 +251,7 @@ bool readJsonFromFile(const char* fileName, JsonDocument& doc) {
  * 显示金山词霸每日信息
  */
 void displayIcibaDataFromFile() {
-  Serial.println("从文件显示金山词霸数据");
+  Serial.print("，从文件显示金山词霸数据");
   
   JsonDocument doc;
   if (!readJsonFromFile("/iciba.json", doc)) {
@@ -314,34 +314,13 @@ void displayIcibaDataFromFile() {
     lv_label_set_text(iciba_label, icibaText.c_str());
     lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
   }
-  
-  // 在词霸文字下方显示data目录下的iciba.png图片作为装饰
-  const char* imagePath = "/iciba.png";
-  
-  // 检查图片文件是否存在
-  if (SPIFFS.exists(imagePath)) {
-    Serial.println("找到iciba.png图片，准备显示");
-    
-    // 获取标签的位置和大小，以便确定图片显示位置
-    lv_area_t labelArea;
-    lv_obj_get_coords(iciba_label, &labelArea);
-    
-    // 计算图片显示位置：在标签下方居中显示
-    int imageX = (screenWidth - 240) / 2; // 假设图片宽度为240，居中显示
-    int imageY = labelArea.y2 - 50; // 在标签下方10像素处
-    
-    // 显示图片 - 使用新的LVGL图片显示函数
-    displayImageFromSPIFFS(imagePath, imageX, imageY);
-  } else {
-    Serial.println("未找到iciba.png图片");
-  }
 }
 
 /**
  * 显示留言板内容
  */
 void displayNoteDataFromFile() {
-  Serial.println("从文件显示留言板内容");
+  Serial.print("，从文件显示留言板内容");
   
   // 外部声明note_label
   extern lv_obj_t* note_label;
@@ -409,7 +388,7 @@ void displayNoteDataFromFile() {
  * 显示宇航员信息
  */
 void displayAstronautsDataFromFile() {
-  Serial.println("从文件显示宇航员数据");
+  Serial.print("，从文件显示宇航员数据");
   
   // 确保astronauts_label已创建和初始化
   createAndInitLabel(astronauts_label, "astronauts_label");
@@ -517,7 +496,7 @@ void displayAstronautsDataFromFile() {
  * 显示新闻信息
  */
 void displayNewsDataFromFile() {
-  Serial.println("从文件显示新闻数据");
+  Serial.print("，从文件显示新闻数据");
   
   // 确保news_label已创建和初始化
   if (!news_label) {
@@ -599,30 +578,4 @@ void initDisplayManager() {
   if (!SPIFFS.begin()) {
     Serial.println("SPIFFS初始化失败");
   }
-}
-
-/**
- * 测试从URL显示图片的功能
- * @param url 图片的URL地址
- */
-void testDisplayImageFromUrl(const char* url) {
-  Serial.print("测试从URL显示图片功能已移除: ");
-  Serial.println(url);
-  
-  // 清除屏幕
-  lv_obj_clean(lv_scr_act());
-  lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0xFFFFFF), 0);
-  
-  // 创建状态标签
-  lv_obj_t* status_label = lv_label_create(lv_scr_act());
-  lv_obj_set_style_text_font(status_label, &lvgl_font_song_16, 0);
-  lv_obj_set_style_text_color(status_label, lv_color_hex(0x000000), 0);
-  lv_label_set_text(status_label, "图片显示功能已移除");
-  lv_obj_align(status_label, LV_ALIGN_TOP_MID, 0, 10);
-  
-  // 刷新显示以显示状态信息
-  lv_refr_now(lv_disp_get_default());
-  lv_task_handler();
-  
-  Serial.println("图片显示测试完成");
 }

@@ -205,7 +205,7 @@ void WebConfigServer::handleRoot() {
     // 两种模式都显示留言板功能
     html += "<h2>留言板内容配置</h2>";
     html += "<form action='/note' method='post'>";
-    html += "留言内容: <textarea name='note'>" + noteContent + "</textarea><br>";
+    html += "留言内容: <br/><textarea name='note'>" + noteContent + "</textarea><br>";
     html += "<input type='submit' value='保存留言内容'>";
     html += "</form>";
     

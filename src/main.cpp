@@ -377,6 +377,10 @@ void displayTask(void *pvParameters) {
       updateBrightness();
     }
 
+    // 函数级别的静态变量，用于配置信息显示
+    static lv_obj_t* config_label = nullptr;
+    static lv_obj_t* config_line = nullptr;
+    
     if (webConfigMode) {
       // 在配置模式下，显示配置信息
       TimeManager::getInstance()->updateTimeDisplay();
@@ -385,64 +389,75 @@ void displayTask(void *pvParameters) {
       static unsigned long lastConfigDisplayUpdate = 0;
       if (millis() - lastConfigDisplayUpdate >= 1000) {
         lastConfigDisplayUpdate = millis();
-        // 这里可以添加代码来在屏幕上显示配置模式信息
+        
+        // 串口打印配置信息（简化版本）
         if (WiFi.status() == WL_CONNECTED) {
-          Serial.print("Web配置模式已启动，请访问当前IP地址: ");
+          Serial.print("访问当前IP地址: ");
           Serial.println(WiFi.localIP());
         } else {
-          Serial.println("Web配置模式已启动，请连接热点访问192.168.4.1");
+          Serial.println("连接热点访问192.168.4.1");
         }
         
-        // 在屏幕上显示配置模式信息
-        String configInfo = "配置模式已启动\n";
-        if (WiFi.status() == WL_CONNECTED) {
-          configInfo += "IP: " + WiFi.localIP().toString();
+        // 根据WiFi模式决定是否显示配置信息
+        if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+          // AP模式或AP+STA模式下显示配置信息
+          String configInfo = "配置模式已启动\n";
+          if (WiFi.status() == WL_CONNECTED) {
+            configInfo += "IP: " + WiFi.localIP().toString();
+          } else {
+            configInfo += "请连接热点ESP32-InfoBoard\n";
+            configInfo += "访问: 192.168.4.1";
+          }
+          
+          // 创建或更新配置信息标签
+          if (config_label == nullptr || !lv_obj_is_valid(config_label)) {
+            config_label = lv_label_create(lv_scr_act());
+            lv_obj_set_style_text_font(config_label, &lvgl_font_song_16, 0);
+            lv_obj_set_style_text_color(config_label, lv_color_hex(0x00FF00), 0);
+            lv_obj_set_width(config_label, screenWidth - 10); // 稍宽一些，留出边距
+            lv_obj_align(config_label, LV_ALIGN_BOTTOM_MID, 0, -10); // 底部中央对齐，距离底部10像素
+            lv_label_set_long_mode(config_label, LV_LABEL_LONG_SCROLL); // 设置为向上滚动显示模式
+          }
+          
+          // 设置标签文本并显示
+          if (config_label && lv_obj_is_valid(config_label)) {
+            lv_label_set_text(config_label, configInfo.c_str());
+            lv_obj_clear_flag(config_label, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(config_label);
+          }
+          
+          // 创建或更新线条
+          if (config_line == nullptr || !lv_obj_is_valid(config_line)) {
+            config_line = lv_line_create(lv_scr_act());
+            
+            // 创建线条样式
+            static lv_style_t style_line;
+            lv_style_init(&style_line);
+            lv_style_set_line_width(&style_line, 2); // 线条宽度
+            lv_style_set_line_color(&style_line, lv_color_hex(0xFF0000)); // 红色
+            lv_style_set_line_rounded(&style_line, true);
+            
+            // 添加样式到线条对象
+            lv_obj_add_style(config_line, &style_line, 0);
+            
+            // 设置线条位置在config_label上方
+            lv_point_t line_points[] = { {0, screenHeight - 75}, {screenWidth, screenHeight - 75} };
+            lv_line_set_points(config_line, line_points, 2);
+          }
+          
+          // 显示线条
+          if (config_line && lv_obj_is_valid(config_line)) {
+            lv_obj_clear_flag(config_line, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(config_line);
+          }
         } else {
-          configInfo += "请连接热点ESP32-InfoBoard\n";
-          configInfo += "访问: 192.168.4.1";
-        }
-        
-        // 创建一个临时标签显示配置信息
-        static lv_obj_t* config_label = nullptr;
-        static lv_obj_t* config_line = nullptr;
-        
-        if (config_label == nullptr || !lv_obj_is_valid(config_label)) {
-          config_label = lv_label_create(lv_scr_act());
-          lv_obj_set_style_text_font(config_label, &lvgl_font_song_16, 0);
-          lv_obj_set_style_text_color(config_label, lv_color_hex(0x00FF00), 0);
-          lv_obj_set_width(config_label, screenWidth - 10); // 稍宽一些，留出边距
-          lv_obj_align(config_label, LV_ALIGN_BOTTOM_MID, 0, -10); // 底部中央对齐，距离底部10像素
-          lv_label_set_long_mode(config_label, LV_LABEL_LONG_SCROLL); // 设置为向上滚动显示模式
-        }
-        
-        // 创建或更新config_label上方的绿色横线
-        if (config_line == nullptr || !lv_obj_is_valid(config_line)) {
-          config_line = lv_line_create(lv_scr_act());
-          
-          // 创建线条样式
-          static lv_style_t style_line;
-          lv_style_init(&style_line);
-          lv_style_set_line_width(&style_line, 2); // 线条宽度
-          lv_style_set_line_color(&style_line, lv_color_hex(0xFF0000)); // 红色
-          lv_style_set_line_rounded(&style_line, true);
-          
-          // 添加样式到线条对象
-          lv_obj_add_style(config_line, &style_line, 0);
-          
-          // 设置线条位置在config_label上方
-          lv_point_t line_points[] = { {0, screenHeight - 75}, {screenWidth, screenHeight - 75} };
-          lv_line_set_points(config_line, line_points, 2);
-        }
-        
-        if (config_label && lv_obj_is_valid(config_label)) {
-          lv_label_set_text(config_label, configInfo.c_str());
-          lv_obj_clear_flag(config_label, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_move_foreground(config_label);
-        }
-        
-        if (config_line && lv_obj_is_valid(config_line)) {
-          lv_obj_clear_flag(config_line, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_move_foreground(config_line);
+          // STA模式下隐藏配置信息标签和线条
+          if (config_label && lv_obj_is_valid(config_label)) {
+            lv_obj_add_flag(config_label, LV_OBJ_FLAG_HIDDEN);
+          }
+          if (config_line && lv_obj_is_valid(config_line)) {
+            lv_obj_add_flag(config_line, LV_OBJ_FLAG_HIDDEN);
+          }
         }
       }
 
@@ -456,6 +471,14 @@ void displayTask(void *pvParameters) {
       
       // 清除状态标签显示内容
       TimeManager::getInstance()->clearStatusInfo();
+      
+      // 确保配置信息标签和线条被隐藏
+      if (config_label && lv_obj_is_valid(config_label)) {
+        lv_obj_add_flag(config_label, LV_OBJ_FLAG_HIDDEN);
+      }
+      if (config_line && lv_obj_is_valid(config_line)) {
+        lv_obj_add_flag(config_line, LV_OBJ_FLAG_HIDDEN);
+      }
     }
     
     // LVGL处理

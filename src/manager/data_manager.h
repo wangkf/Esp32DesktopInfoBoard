@@ -11,7 +11,7 @@
 // API URL常量定义
 #define ASTRONAUTS_API_URL "http://api.open-notify.org/astros.json"
 #define ICIBA_API_URL      "https://open.iciba.com/dsapi/"
-#define NEWS_API_URL       "http://YOU_NEWS_API/hotnews/?sn=test"
+#define NEWS_API_URL       "http://YOU_NEWS_API"
 
 // 缓存时间定义（毫秒）
 #define CACHE_TIME_2HOURS 2 * 60 * 60 * 1000 // 2小时

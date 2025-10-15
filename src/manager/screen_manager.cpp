@@ -67,34 +67,54 @@ void ScreenManager::init() {
 void ScreenManager::hideAllScreens() {
     Serial.println("--隐藏所有屏幕元素");
     
-    // 隐藏毛选标签
+    // 隐藏毛选标签和背景图像
 extern lv_obj_t* mao_select_label;
+extern lv_obj_t* maoselect_img;
 if (mao_select_label) {
     lv_obj_add_flag(mao_select_label, LV_OBJ_FLAG_HIDDEN);
 }
+if (maoselect_img) {
+    lv_obj_add_flag(maoselect_img, LV_OBJ_FLAG_HIDDEN);
+}
     
-    // 隐藏乌鸡汤标签
+    // 隐藏乌鸡汤标签和背景图像
 extern lv_obj_t* toxic_soul_label;
+extern lv_obj_t* toxic_soul_img;
 if (toxic_soul_label) {
     lv_obj_add_flag(toxic_soul_label, LV_OBJ_FLAG_HIDDEN);
 }
+if (toxic_soul_img) {
+    lv_obj_add_flag(toxic_soul_img, LV_OBJ_FLAG_HIDDEN);
+}
     
-    // 隐藏禅语哲言标签
+    // 隐藏禅语哲言标签和背景图像
 extern lv_obj_t* soul_label;
+extern lv_obj_t* soul_img;
 if (soul_label) {
     lv_obj_add_flag(soul_label, LV_OBJ_FLAG_HIDDEN);
 }
+if (soul_img) {
+    lv_obj_add_flag(soul_img, LV_OBJ_FLAG_HIDDEN);
+}
     
-    // 隐藏金山词霸标签
+    // 隐藏金山词霸标签和图片
 extern lv_obj_t* iciba_label;
+extern lv_obj_t* iciba_img;
 if (iciba_label) {
     lv_obj_add_flag(iciba_label, LV_OBJ_FLAG_HIDDEN);
 }
+if (iciba_img) {
+    lv_obj_add_flag(iciba_img, LV_OBJ_FLAG_HIDDEN);
+}
     
-    // 隐藏宇航员信息标签
+    // 隐藏宇航员信息标签和背景图像
 extern lv_obj_t* astronauts_label;
+extern lv_obj_t* astronauts_img;
 if (astronauts_label) {
     lv_obj_add_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN);
+}
+if (astronauts_img) {
+    lv_obj_add_flag(astronauts_img, LV_OBJ_FLAG_HIDDEN);
 }
     
     // 隐藏新闻标签
@@ -103,10 +123,14 @@ if (news_label) {
     lv_obj_add_flag(news_label, LV_OBJ_FLAG_HIDDEN);
 }
     
-    // 隐藏日历标签
+    // 隐藏日历标签和背景图像
 extern lv_obj_t* calendar_label;
+extern lv_obj_t* calendar_img;
 if (calendar_label) {
     lv_obj_add_flag(calendar_label, LV_OBJ_FLAG_HIDDEN);
+}
+if (calendar_img) {
+    lv_obj_add_flag(calendar_img, LV_OBJ_FLAG_HIDDEN);
 }
 
     // 隐藏当日日期大字体标签
@@ -188,6 +212,13 @@ void ScreenManager::showCurrentScreen() {
  */
 void ScreenManager::showCalendarScreen() {
     Serial.print("切换到日历屏幕：");
+    
+    // 确保calendar_img被创建并显示在底部
+    extern lv_obj_t* calendar_img;
+    if (calendar_img && lv_obj_is_valid(calendar_img)) {
+        // 显示底部图像
+        lv_obj_clear_flag(calendar_img, LV_OBJ_FLAG_HIDDEN);
+    }
     
     // 确保calendar_label被创建并显示
     extern lv_obj_t* calendar_label;
@@ -402,12 +433,34 @@ void ScreenManager::showToxicSoulScreen() {
  * 显示金山词霸每日信息屏幕
  */
 void ScreenManager::showIcibaScreen() {
-    Serial.print("切换到金山词霸每日信息屏幕：");
+    Serial.println("切换到金山词霸每日信息屏幕");
     
-    // 显示金山词霸标签
+    // 显示金山词霸标签和图片
 extern lv_obj_t* iciba_label;
+extern lv_obj_t* iciba_img;
+    
+    Serial.println("调试信息 - 检查iciba对象");
+    Serial.print("iciba_label 是否存在: ");
+    Serial.println(iciba_label ? "是" : "否");
+    Serial.print("iciba_img 是否存在: ");
+    Serial.println(iciba_img ? "是" : "否");
+    
 if (iciba_label) {
+    Serial.println("显示iciba_label");
     lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(iciba_label);
+}
+if (iciba_img) {
+    Serial.println("显示iciba_img并设置层级");
+    lv_obj_clear_flag(iciba_img, LV_OBJ_FLAG_HIDDEN);
+    // 确保图片在顶层显示以便调试
+    lv_obj_move_foreground(iciba_img);
+    // 暂停一会儿让用户能看到图片
+    delay(1000);
+    // 再把文字移到顶层
+    if (iciba_label) {
+        lv_obj_move_foreground(iciba_label);
+    }
 }
     // 首先尝试从文件显示金山词霸数据
     ::displayIcibaDataFromFile();
@@ -442,6 +495,13 @@ if (!astronauts_label) {
     lv_obj_set_style_bg_opa(astronauts_label, 100, 0); // 设置背景透明度
 }
 
+    // 确保astronauts_img被创建并显示在底部
+    extern lv_obj_t* astronauts_img;
+    if (astronauts_img && lv_obj_is_valid(astronauts_img)) {
+        // 显示底部图像
+        lv_obj_clear_flag(astronauts_img, LV_OBJ_FLAG_HIDDEN);
+    }
+    
     // 确保宇航员标签可见
     if (astronauts_label) {
         lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN);
@@ -465,6 +525,13 @@ if (!astronauts_label) {
  * 显示随机的毛主席语录
  */
 void ScreenManager::showRandomMaoSelect() {
+    // 确保maoselect_img被创建并显示在上方
+    extern lv_obj_t* maoselect_img;
+    if (maoselect_img && lv_obj_is_valid(maoselect_img)) {
+        // 显示上方图像
+        lv_obj_clear_flag(maoselect_img, LV_OBJ_FLAG_HIDDEN);
+    }
+    
     // 确保mao_select_label被创建并显示
 extern lv_obj_t* mao_select_label;
 if (mao_select_label && lv_obj_is_valid(mao_select_label)) {
@@ -505,6 +572,13 @@ void ScreenManager::showSoulScreen() {
  * 显示随机的乌鸡汤
  */
 void ScreenManager::showRandomToxicSoul() {
+    // 确保toxic_soul_img被创建并显示在底部
+    extern lv_obj_t* toxic_soul_img;
+    if (toxic_soul_img && lv_obj_is_valid(toxic_soul_img)) {
+        // 显示底部图像
+        lv_obj_clear_flag(toxic_soul_img, LV_OBJ_FLAG_HIDDEN);
+    }
+    
     // 确保toxic_soul_label被创建并显示
 extern lv_obj_t* toxic_soul_label;
 if (toxic_soul_label && lv_obj_is_valid(toxic_soul_label)) {
@@ -527,6 +601,13 @@ if (toxic_soul_label && lv_obj_is_valid(toxic_soul_label)) {
  * 显示随机的禅语哲言
  */
 void ScreenManager::showRandomSoul() {
+    // 确保soul_img被创建并显示在底部
+    extern lv_obj_t* soul_img;
+    if (soul_img && lv_obj_is_valid(soul_img)) {
+        // 显示底部图像
+        lv_obj_clear_flag(soul_img, LV_OBJ_FLAG_HIDDEN);
+    }
+    
     // 确保soul_label被创建并显示
 extern lv_obj_t* soul_label;
 if (soul_label && lv_obj_is_valid(soul_label)) {

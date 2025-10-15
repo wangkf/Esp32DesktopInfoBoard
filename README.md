@@ -215,6 +215,31 @@ src/
 
 ### UI组件
 
+#### ui/init_ui.h
+
+**功能**: 定义所有LVGL对象的外部声明，包括各种标签和图像对象。
+
+**主要对象声明**:
+- `lv_obj_t *time_label`: 时间标签对象
+- `lv_obj_t *minute_label`: 分钟标签对象
+- `lv_obj_t *second_label`: 秒钟标签对象
+- `lv_obj_t *date_label`: 日期标签对象
+- `lv_obj_t *weekday_label`: 星期标签对象
+- `lv_obj_t *mao_select_label`: 毛泽东选集标签对象
+- `lv_obj_t *maoselect_img`: 毛泽东选集图片对象
+- `lv_obj_t *toxic_soul_label`: 毒鸡汤标签对象
+- `lv_obj_t *toxic_soul_img`: 毒鸡汤图片对象
+- `lv_obj_t *soul_label`: 禅语哲言标签对象
+- `lv_obj_t *soul_img`: 禅语哲言图片对象
+- `lv_obj_t *iciba_label`: 金山词霸标签对象
+- `lv_obj_t *iciba_img`: 金山词霸图片对象
+- `lv_obj_t *astronauts_label`: 宇航员信息标签对象
+- `lv_obj_t *astronauts_img`: 宇航员信息图片对象
+- `lv_obj_t *news_label`: 新闻标签对象
+- `lv_obj_t *calendar_label`: 日历标签对象
+- `lv_obj_t *calendar_img`: 日历图片对象
+- `lv_obj_t *today_date_label`: 今日日期标签对象
+
 #### ui/display_manager.h/cpp
 
 **功能**: 管理各种数据的显示逻辑。
@@ -232,19 +257,19 @@ src/
 
 ### 1. 名言警句展示
 
-轮流展示毛泽东选集、心灵鸡汤和禅语哲言内容，为用户提供正能量和思考。
+轮流展示毛泽东选集、心灵鸡汤、禅语哲言和毒鸡汤内容，为用户提供多元化的思考内容。内容均包含配套图片显示。
 
 ### 2. 金山词霸每日一句
 
-显示金山词霸的每日一句，帮助用户学习英语。
+显示金山词霸的每日一句，帮助用户学习英语，包含配套图片显示。
 
 ### 3. 国际空间站宇航员信息
 
-显示当前在国际空间站上的宇航员信息。
+显示当前在国际空间站上的宇航员信息，包含配套图片显示。
 
 ### 4. 日历显示功能
 
-显示当月日历，并在顶部居中以大字体突出显示当日日期，日期数字采用两位数格式（如01、02），提高视觉效果和信息清晰度。日历内容已优化显示对齐，确保日期第一行与其他内容正确对齐。
+显示当月日历，并在顶部居中以大字体突出显示当日日期，日期数字采用两位数格式（如01、02），提高视觉效果和信息清晰度。日历内容已优化显示对齐，确保日期第一行与其他内容正确对齐，并包含配套图片显示。
 
 ### 5. ButtonManager功能
 
@@ -345,6 +370,10 @@ src/
 ### 7. 长文本处理优化
 
 系统支持长文本的滚动显示，确保内容过长时能够完整展示，同时保持界面整洁美观。
+
+### 8. 图像处理与转换
+
+项目使用LVGL图像转换器工具(<mcurl name="LVGL Image Converter" url="https://lvgl.io/tools/imageconverter"></mcurl>)来处理和转换图像资源。该工具可以将常见图像格式(如PNG、JPG等)转换为LVGL支持的格式，如单色、灰度或RGB565等，以减小内存占用并优化显示性能。对于项目中的iciba等图像资源，建议使用该工具进行转换后再集成到项目中。转换时选择LVGL V8格式，Color Format选择CF_TRUE_COLOR，勾选Dither images。
 
 ## 注意事项
 

@@ -2,7 +2,8 @@
 #include <lvgl.h>
 #include <TFT_eSPI.h>
 #include "config/config.h"
-#include "lv_conf_internal.h"
+  #include "lv_conf_internal.h"
+  #include "../images/images.h"
 
 // 声明全局字体
 extern lv_font_t lvgl_font_digital_24;
@@ -12,11 +13,17 @@ extern lv_font_t lvgl_font_digital_64;
 // LVGL对象定义
 lv_obj_t* mao_select_label = nullptr;
 lv_obj_t* toxic_soul_label = nullptr;
+lv_obj_t* toxic_soul_img = nullptr;    // 毒鸡汤背景图像
 lv_obj_t* soul_label = nullptr;        // 禅语哲言标签
+lv_obj_t* soul_img = nullptr;          // 禅语背景图像
+lv_obj_t* maoselect_img = nullptr;     // 毛泽东选集背景图像
 lv_obj_t* iciba_label = nullptr;
+lv_obj_t* iciba_img = nullptr;
 lv_obj_t* astronauts_label = nullptr;
+lv_obj_t* astronauts_img = nullptr;    // 宇航员背景图像
 lv_obj_t* news_label = nullptr;
 lv_obj_t* calendar_label = nullptr;
+lv_obj_t* calendar_img = nullptr;      // 日历背景图像
 lv_obj_t* today_date_label = nullptr;
 lv_obj_t* note_label = nullptr;
 
@@ -78,8 +85,8 @@ void initUI() {
   mao_select_label = lv_label_create(lv_scr_act());
   lv_obj_set_style_text_font(mao_select_label, &lvgl_font_song_16, 0);
   lv_obj_set_style_text_color(mao_select_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
-  lv_obj_set_width(mao_select_label, screenWidth - 20);
-  lv_obj_align(mao_select_label, LV_ALIGN_TOP_MID, 0, 110);
+  lv_obj_set_width(mao_select_label, screenWidth - 10);
+  lv_obj_align(mao_select_label, LV_ALIGN_TOP_MID, 0, 220);
   lv_label_set_long_mode(mao_select_label, LV_LABEL_LONG_WRAP);
   lv_obj_add_flag(mao_select_label, LV_OBJ_FLAG_HIDDEN);
 
@@ -100,6 +107,27 @@ void initUI() {
   lv_obj_align(soul_label, LV_ALIGN_TOP_MID, 0, 110);
   lv_label_set_long_mode(soul_label, LV_LABEL_LONG_WRAP);
   lv_obj_add_flag(soul_label, LV_OBJ_FLAG_HIDDEN);
+  
+  // 创建禅语背景图像
+  soul_img = lv_img_create(lv_scr_act());
+  lv_img_set_src(soul_img, &soul);
+  lv_obj_set_size(soul_img, 320, 120);
+  lv_obj_align(soul_img, LV_ALIGN_BOTTOM_MID, 0, 0); // 底部居中对齐
+  lv_obj_add_flag(soul_img, LV_OBJ_FLAG_HIDDEN); // 默认隐藏
+  
+  // 创建毛泽东选集背景图像（上方显示）
+  maoselect_img = lv_img_create(lv_scr_act());
+  lv_img_set_src(maoselect_img, &maoselect);
+  lv_obj_set_size(maoselect_img, 320, 120);
+  lv_obj_align(maoselect_img, LV_ALIGN_TOP_MID, 0, 80); // 上方居中对齐
+  lv_obj_add_flag(maoselect_img, LV_OBJ_FLAG_HIDDEN); // 默认隐藏
+  
+  // 创建毒鸡汤背景图像（底部居中显示）
+  toxic_soul_img = lv_img_create(lv_scr_act());
+  lv_img_set_src(toxic_soul_img, &taxicsoul);
+  lv_obj_set_size(toxic_soul_img, 320, 60);
+  lv_obj_align(toxic_soul_img, LV_ALIGN_BOTTOM_MID, 0, 0); // 底部居中对齐
+  lv_obj_add_flag(toxic_soul_img, LV_OBJ_FLAG_HIDDEN); // 默认隐藏
 
   // 创建金山词霸标签
   iciba_label = lv_label_create(lv_scr_act());
@@ -110,6 +138,14 @@ void initUI() {
   lv_label_set_long_mode(iciba_label, LV_LABEL_LONG_WRAP);
   lv_obj_add_flag(iciba_label, LV_OBJ_FLAG_HIDDEN);
 
+  // 创建金山词霸图片装饰
+  iciba_img = lv_img_create(lv_scr_act());
+  lv_img_set_src(iciba_img, &iciba);
+  lv_obj_set_size(iciba_img, 320, 80);
+  lv_obj_align(iciba_img, LV_ALIGN_BOTTOM_MID, 0, 0); // 底部居中对齐
+  // 暂时保持显示状态，可根据需要取消注释下面的隐藏标志
+  // lv_obj_add_flag(iciba_img, LV_OBJ_FLAG_HIDDEN); // 默认隐藏
+
   // 创建宇航员标签
   astronauts_label = lv_label_create(lv_scr_act());
   lv_obj_set_style_text_font(astronauts_label, &lvgl_font_song_16, 0);
@@ -118,6 +154,13 @@ void initUI() {
   lv_obj_align(astronauts_label, LV_ALIGN_TOP_MID, 0, 110);
   lv_label_set_long_mode(astronauts_label, LV_LABEL_LONG_WRAP);
   lv_obj_add_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN);
+  
+  // 创建宇航员背景图像（底部居中显示）
+  astronauts_img = lv_img_create(lv_scr_act());
+  lv_img_set_src(astronauts_img, &astronauts);
+  lv_obj_set_size(astronauts_img, 320, 80);
+  lv_obj_align(astronauts_img, LV_ALIGN_BOTTOM_MID, 0, 0); // 底部居中对齐
+  lv_obj_add_flag(astronauts_img, LV_OBJ_FLAG_HIDDEN); // 默认隐藏
 
   // 创建新闻标签
   news_label = lv_label_create(lv_scr_act());
@@ -131,7 +174,7 @@ void initUI() {
   // 创建当日日期大字体标签（日历页上方居中）
   today_date_label = lv_label_create(lv_scr_act());
   lv_obj_set_style_text_font(today_date_label, &lvgl_font_digital_108, 0); // 使用已定义的字体
-  lv_obj_set_style_text_color(today_date_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
+  lv_obj_set_style_text_color(today_date_label, lv_color_hex(0xFF0000), 0); // 白色文字以在黑色背景上可见
   lv_obj_align(today_date_label, LV_ALIGN_TOP_MID, 0, 110); // 调整位置到顶部居中
   lv_obj_add_flag(today_date_label, LV_OBJ_FLAG_HIDDEN);
 
@@ -143,6 +186,13 @@ void initUI() {
   lv_obj_align(calendar_label, LV_ALIGN_BOTTOM_RIGHT, -20, -50); // 调整位置到右下角
   lv_label_set_long_mode(calendar_label, LV_LABEL_LONG_WRAP);
   lv_obj_add_flag(calendar_label, LV_OBJ_FLAG_HIDDEN);
+  
+  // 创建日历背景图像（底部居中显示）
+  calendar_img = lv_img_create(lv_scr_act());
+  lv_img_set_src(calendar_img, &calendar);
+  lv_obj_set_size(calendar_img, 320, 60);
+  lv_obj_align(calendar_img, LV_ALIGN_BOTTOM_MID, 0, 0); // 底部居中对齐
+  lv_obj_add_flag(calendar_img, LV_OBJ_FLAG_HIDDEN); // 默认隐藏
 
   // 创建留言板标签
   note_label = lv_label_create(lv_scr_act());

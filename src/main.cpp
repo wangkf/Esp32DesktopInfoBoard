@@ -434,7 +434,7 @@ void displayTask(void *pvParameters) {
             // 创建线条样式
             static lv_style_t style_line;
             lv_style_init(&style_line);
-            lv_style_set_line_width(&style_line, 2); // 线条宽度
+            lv_style_set_line_width(&style_line, 1); // 线条宽度
             lv_style_set_line_color(&style_line, lv_color_hex(0xFF0000)); // 红色
             lv_style_set_line_rounded(&style_line, true);
             

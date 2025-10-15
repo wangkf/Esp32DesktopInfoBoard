@@ -124,7 +124,7 @@ void TimeManager::init() {
         lv_obj_align(ip_label, LV_ALIGN_TOP_RIGHT, -2, 2); // 右上角对齐，x偏移-2，y偏移2
         lv_label_set_text(ip_label, ""); // 初始为空
         lv_label_set_long_mode(ip_label, LV_LABEL_LONG_SCROLL_CIRCULAR); // 滚动显示
-        lv_obj_set_width(ip_label, screenWidth / 2-60); // 设置宽度
+        lv_obj_set_width(ip_label, screenWidth/2-40); // 设置宽度
     }
     
     // 初始化时强制更新分钟显示

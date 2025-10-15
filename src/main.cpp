@@ -123,8 +123,8 @@ void initWiFiAndNTP() {
       // 显示当前IP地址在屏幕右上角
       char ipStr[20];
       WiFi.localIP().toString().toCharArray(ipStr, sizeof(ipStr));
-      char combinedIpStr[24];
-      snprintf(combinedIpStr, sizeof(combinedIpStr), "\uF012%s", ipStr);
+      char combinedIpStr[90];
+      snprintf(combinedIpStr, sizeof(combinedIpStr), "\uF012 http://%s 或 http://ESP32-InfoBoard 登录更改留言板", ipStr);
       TimeManager::getInstance()->setIpInfo(combinedIpStr, lv_color_hex(0x00FF00));
     }
   } else {

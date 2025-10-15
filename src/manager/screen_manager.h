@@ -31,6 +31,7 @@ private:
     // 显示特定屏幕
     void showMaoSelectScreen();
     void showToxicSoulScreen();
+    void showSoulScreen();
     void showIcibaScreen();
     void showAstronautsScreen();
     void showNewsScreen();
@@ -62,6 +63,7 @@ public:
     // 显示特定类型的信息
     void showRandomMaoSelect();
     void showRandomToxicSoul();
+    void showRandomSoul();
     void displayAstronautsDataFromFile();
     
     // 设置配置模式图标状态

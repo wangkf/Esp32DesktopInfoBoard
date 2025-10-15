@@ -9,6 +9,7 @@ const char* ntpServer = NTP_SERVER;
 // LVGL对象声明
 extern lv_obj_t* mao_select_label;
 extern lv_obj_t* toxic_soul_label;
+extern lv_obj_t* soul_label;        // 禅语哲言标签
 extern lv_obj_t* iciba_label;
 extern lv_obj_t* astronauts_label;
 
@@ -122,8 +123,9 @@ void initWiFiAndNTP() {
       // 显示当前IP地址在屏幕右上角
       char ipStr[20];
       WiFi.localIP().toString().toCharArray(ipStr, sizeof(ipStr));
-      String statusText = "\uF012 " + String(ipStr);
-      TimeManager::getInstance()->setStatusInfo(statusText.c_str(), lv_color_hex(0x00FF00), false);
+      char combinedIpStr[24];
+      snprintf(combinedIpStr, sizeof(combinedIpStr), "\uF012%s", ipStr);
+      TimeManager::getInstance()->setIpInfo(combinedIpStr, lv_color_hex(0x00FF00));
     }
   } else {
     Serial.println("\nWiFi连接失败");
@@ -145,8 +147,7 @@ void initWiFiAndNTP() {
       }
       
       // 显示热点IP地址在屏幕右上角
-      String apStatusText = "\uF013 192.168.4.1";
-      TimeManager::getInstance()->setStatusInfo(apStatusText.c_str(), lv_color_hex(0xFF0000), false);
+      TimeManager::getInstance()->setIpInfo("\uF013192.168.4.1", lv_color_hex(0xFF0000));
     }
   }
 }

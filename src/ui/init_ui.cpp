@@ -12,6 +12,7 @@ extern lv_font_t lvgl_font_digital_64;
 // LVGL对象定义
 lv_obj_t* mao_select_label = nullptr;
 lv_obj_t* toxic_soul_label = nullptr;
+lv_obj_t* soul_label = nullptr;        // 禅语哲言标签
 lv_obj_t* iciba_label = nullptr;
 lv_obj_t* astronauts_label = nullptr;
 lv_obj_t* news_label = nullptr;
@@ -90,6 +91,15 @@ void initUI() {
   lv_obj_align(toxic_soul_label, LV_ALIGN_TOP_MID, 0, 110);
   lv_label_set_long_mode(toxic_soul_label, LV_LABEL_LONG_WRAP);
   lv_obj_add_flag(toxic_soul_label, LV_OBJ_FLAG_HIDDEN);
+  
+  // 创建禅语哲言标签
+  soul_label = lv_label_create(lv_scr_act());
+  lv_obj_set_style_text_font(soul_label, &lvgl_font_song_16, 0);
+  lv_obj_set_style_text_color(soul_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
+  lv_obj_set_width(soul_label, screenWidth - 20);
+  lv_obj_align(soul_label, LV_ALIGN_TOP_MID, 0, 110);
+  lv_label_set_long_mode(soul_label, LV_LABEL_LONG_WRAP);
+  lv_obj_add_flag(soul_label, LV_OBJ_FLAG_HIDDEN);
 
   // 创建金山词霸标签
   iciba_label = lv_label_create(lv_scr_act());
@@ -118,21 +128,21 @@ void initUI() {
   lv_label_set_long_mode(news_label, LV_LABEL_LONG_WRAP);
   lv_obj_add_flag(news_label, LV_OBJ_FLAG_HIDDEN);
 
-  // 创建日历标签
+  // 创建当日日期大字体标签（日历页上方居中）
+  today_date_label = lv_label_create(lv_scr_act());
+  lv_obj_set_style_text_font(today_date_label, &lvgl_font_digital_108, 0); // 使用已定义的字体
+  lv_obj_set_style_text_color(today_date_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
+  lv_obj_align(today_date_label, LV_ALIGN_TOP_MID, 0, 110); // 调整位置到顶部居中
+  lv_obj_add_flag(today_date_label, LV_OBJ_FLAG_HIDDEN);
+
+  // 创建日历标签（日历页右下方，位于config_label上方靠右边框）
   calendar_label = lv_label_create(lv_scr_act());
   lv_obj_set_style_text_font(calendar_label, &lvgl_font_song_16, 0);
   lv_obj_set_style_text_color(calendar_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
   lv_obj_set_width(calendar_label, screenWidth - 20);
-  lv_obj_align(calendar_label, LV_ALIGN_TOP_MID, 0, 110);
+  lv_obj_align(calendar_label, LV_ALIGN_BOTTOM_RIGHT, -20, -50); // 调整位置到右下角
   lv_label_set_long_mode(calendar_label, LV_LABEL_LONG_WRAP);
   lv_obj_add_flag(calendar_label, LV_OBJ_FLAG_HIDDEN);
-
-  // 创建当日日期大字体标签（日历页右下方，位于config_label上方靠右边框）
-  today_date_label = lv_label_create(lv_scr_act());
-  lv_obj_set_style_text_font(today_date_label, &lvgl_font_digital_108, 0); // 使用已定义的字体
-  lv_obj_set_style_text_color(today_date_label, lv_color_hex(0xFFFFFF), 0); // 白色文字以在黑色背景上可见
-  lv_obj_align(today_date_label, LV_ALIGN_BOTTOM_RIGHT, -20, -50); // 调整位置，增加右侧和底部边距，确保完全显示
-  lv_obj_add_flag(today_date_label, LV_OBJ_FLAG_HIDDEN);
 
   // 创建留言板标签
   note_label = lv_label_create(lv_scr_act());

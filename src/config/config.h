@@ -5,7 +5,7 @@
 #include <Arduino.h>
 
 // 软件版本定义
-#define SOFTWARE_VERSION "0.1.0"
+#define SOFTWARE_VERSION "0.1.1"
 
 // WiFi配置信息已移至ConfigManager类中管理
 // 从data/config.json文件中读取
@@ -21,6 +21,7 @@ enum ScreenState {
   TOXIC_SOUL_SCREEN,
   ICIBA_SCREEN,
   ASTRONAUTS_SCREEN,
+  SOUL_SCREEN,
   NOTE_SCREEN
 };
 

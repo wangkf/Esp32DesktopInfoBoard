@@ -2,6 +2,7 @@
 #include "network/net_http.h"
 #include "content/maoselect.h"
 #include "content/toxicsoul.h"
+#include "content/soul.h"
 #include "lvgl.h"
 #include "ui/display_manager.h"
 #include <SPIFFS.h>
@@ -56,7 +57,7 @@ void ScreenManager::init() {
         title_label = lv_label_create(screen_title_btn);
         lv_obj_set_style_text_font(title_label, &lvgl_font_song_16, 0);
         lv_obj_set_style_text_color(title_label, lv_color_hex(0xFFFFFF), 0); // 白色文字
-        lv_obj_align(title_label, LV_ALIGN_RIGHT_MID, -5, 0); // 标题靠右对齐，右侧边距5px
+        lv_obj_align(title_label, LV_ALIGN_CENTER, 0, 0); // 标题居中对齐
     }
 }
 
@@ -76,6 +77,12 @@ if (mao_select_label) {
 extern lv_obj_t* toxic_soul_label;
 if (toxic_soul_label) {
     lv_obj_add_flag(toxic_soul_label, LV_OBJ_FLAG_HIDDEN);
+}
+    
+    // 隐藏禅语哲言标签
+extern lv_obj_t* soul_label;
+if (soul_label) {
+    lv_obj_add_flag(soul_label, LV_OBJ_FLAG_HIDDEN);
 }
     
     // 隐藏金山词霸标签
@@ -134,7 +141,6 @@ if (note_label && lv_obj_is_valid(note_label)) {
     if (screen_symbol_label && screen_title_btn && title_label) {
       // 更新标题文本
         lv_label_set_text(title_label, "\uF075 留言板");
-        
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0xFFA500), 0); // 橙色
     }
@@ -151,6 +157,9 @@ void ScreenManager::showCurrentScreen() {
             break;
         case TOXIC_SOUL_SCREEN:
             showToxicSoulScreen();
+            break;
+        case SOUL_SCREEN:
+            showSoulScreen();
             break;
         case ICIBA_SCREEN:
             showIcibaScreen();
@@ -214,7 +223,6 @@ void ScreenManager::showCalendarScreen() {
     if (screen_symbol_label && screen_title_btn && title_label) {
       // 更新标题文本
         lv_label_set_text(title_label, "\uF073 日历");
-        
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x800080), 0); // 紫色
     }
@@ -254,12 +262,12 @@ void ScreenManager::toggleScreen() {
         Serial.println("检测到note.json有内容，切换到留言板屏幕");
         currentScreen = NOTE_SCREEN;
     } else {
-        // 定义屏幕切换顺序：新闻 -> 日历 -> 金山词霸 -> 太空宇航员 -> 毛选 -> 乌鸡汤 -> 新闻...
-        static const ScreenState screenOrder[] = {NEWS_SCREEN, CALENDAR_SCREEN, ICIBA_SCREEN, ASTRONAUTS_SCREEN, MAO_SELECT_SCREEN, TOXIC_SOUL_SCREEN};
+        // 定义屏幕切换顺序：新闻 -> 日历 -> 金山词霸 -> 太空宇航员 -> 毛选 -> 乌鸡汤 -> 禅语哲言 -> 新闻...
+        static const ScreenState screenOrder[] = {NEWS_SCREEN, CALENDAR_SCREEN, ICIBA_SCREEN, ASTRONAUTS_SCREEN, MAO_SELECT_SCREEN, TOXIC_SOUL_SCREEN, SOUL_SCREEN};
         
         // 查找当前屏幕在顺序数组中的索引
         int currentIndex = 0;
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 7; i++) {
             if (screenOrder[i] == currentScreen) {
                 currentIndex = i;
                 break;
@@ -267,7 +275,7 @@ void ScreenManager::toggleScreen() {
         }
         
         // 计算下一个屏幕的索引（循环）
-        int nextIndex = (currentIndex + 1) % 6;
+        int nextIndex = (currentIndex + 1) % 7;
         
         // 设置下一个屏幕
         currentScreen = screenOrder[nextIndex];
@@ -307,6 +315,9 @@ void ScreenManager::refreshCurrentScreenData() {
         case TOXIC_SOUL_SCREEN:
             showRandomToxicSoul();
             break;
+        case SOUL_SCREEN:
+            showRandomSoul();
+            break;
         case ICIBA_SCREEN:
             // 从文件加载并显示数据
             ::displayIcibaDataFromFile();
@@ -344,8 +355,7 @@ void ScreenManager::showNewsScreen() {
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
       // 更新标题文本
-        lv_label_set_text(title_label, "\uF0AE 每日新闻");
-        
+        lv_label_set_text(title_label, "\uF0AE 此刻头条");
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x0000FF), 0); // 蓝色
     }
@@ -365,7 +375,6 @@ void ScreenManager::showMaoSelectScreen() {
     if (screen_symbol_label && screen_title_btn && title_label) {
       // 更新标题文本
         lv_label_set_text(title_label, "\uF024 毛主席语录");
-        
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0xFF0000), 0); // 红色
     }
@@ -384,7 +393,6 @@ void ScreenManager::showToxicSoulScreen() {
     if (screen_symbol_label && screen_title_btn && title_label) {
       // 更新标题文本
         lv_label_set_text(title_label, "\uF069 心灵鸡汤");
-        
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x008000), 0); // 绿色
     }
@@ -406,8 +414,7 @@ if (iciba_label) {
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
       // 更新标题文本
-        lv_label_set_text(title_label, "\uF0AC 每日一句");
-        
+        lv_label_set_text(title_label, "\uF0AC 每日一句");   
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0xFFA500), 0); // 橙色
     }
@@ -449,7 +456,6 @@ if (!astronauts_label) {
     if (screen_symbol_label && screen_title_btn && title_label) {
       // 更新标题文本
         lv_label_set_text(title_label, "\uF0C2 太空宇航员");
-        
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x4B0082), 0); // 靛蓝色
     }
@@ -478,6 +484,24 @@ if (mao_select_label && lv_obj_is_valid(mao_select_label)) {
 }
 
 /**
+ * 显示禅语哲言屏幕
+ */
+void ScreenManager::showSoulScreen() {
+    Serial.print("切换到禅语哲言屏幕：");
+    
+    // 显示随机的禅语哲言
+    showRandomSoul();
+    
+    // 更新屏幕标题和符号
+    if (screen_symbol_label && screen_title_btn && title_label) {
+      // 更新标题文本
+        lv_label_set_text(title_label, "\uF06D 禅语哲言");
+        // 更新色块颜色
+        lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x808000), 0); // 橄榄绿
+    }
+}
+
+/**
  * 显示随机的乌鸡汤
  */
 void ScreenManager::showRandomToxicSoul() {
@@ -496,5 +520,27 @@ if (toxic_soul_label && lv_obj_is_valid(toxic_soul_label)) {
     
     // 确保标签显示在最上层
     lv_obj_move_foreground(toxic_soul_label);
+}
+}
+
+/**
+ * 显示随机的禅语哲言
+ */
+void ScreenManager::showRandomSoul() {
+    // 确保soul_label被创建并显示
+extern lv_obj_t* soul_label;
+if (soul_label && lv_obj_is_valid(soul_label)) {
+    // 从数组中随机选择一条禅语哲言
+    int count = sizeof(Soul) / sizeof(Soul[0]);
+    int randomIndex = random(count);
+    
+    // 设置禅语哲言文本
+    lv_label_set_text(soul_label, Soul[randomIndex]);
+    
+    // 确保标签可见
+    lv_obj_clear_flag(soul_label, LV_OBJ_FLAG_HIDDEN);
+    
+    // 确保标签显示在最上层
+    lv_obj_move_foreground(soul_label);
 }
 }

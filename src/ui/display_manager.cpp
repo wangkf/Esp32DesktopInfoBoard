@@ -165,7 +165,7 @@ void displayCalendar() {
   
   // 填充第一行的空格
   for (int i = 0; i < firstDayWeekday; i++) {
-    calendarText += "    "; // 四个空格
+    calendarText += "     "; // 五个空格
   }
   
   // 填充日期
@@ -251,7 +251,7 @@ bool readJsonFromFile(const char* fileName, JsonDocument& doc) {
  * 显示金山词霸每日信息
  */
 void displayIcibaDataFromFile() {
-  Serial.print("，从文件显示金山词霸数据");
+  Serial.print("从文件显示金山词霸数据");
   
   JsonDocument doc;
   if (!readJsonFromFile("/iciba.json", doc)) {
@@ -320,7 +320,7 @@ void displayIcibaDataFromFile() {
  * 显示留言板内容
  */
 void displayNoteDataFromFile() {
-  Serial.print("，从文件显示留言板内容");
+  Serial.print("从文件显示留言板内容");
   
   // 外部声明note_label
   extern lv_obj_t* note_label;
@@ -388,7 +388,7 @@ void displayNoteDataFromFile() {
  * 显示宇航员信息
  */
 void displayAstronautsDataFromFile() {
-  Serial.print("，从文件显示宇航员数据");
+  Serial.print("从文件显示宇航员数据");
   
   // 确保astronauts_label已创建和初始化
   createAndInitLabel(astronauts_label, "astronauts_label");
@@ -496,7 +496,7 @@ void displayAstronautsDataFromFile() {
  * 显示新闻信息
  */
 void displayNewsDataFromFile() {
-  Serial.print("，从文件显示新闻数据");
+  Serial.print("从文件显示新闻数据");
   
   // 确保news_label已创建和初始化
   if (!news_label) {

@@ -4,7 +4,7 @@
 ESP32桌面信息板是一个基于ESP32微控制器的多功能信息显示系统，可以实时展示名言警句、金山词霸每日一句、国际空间站宇航员信息等内容，并支持自动换屏、光线感应调节亮度和Web配置等功能。
 
 ## 软件版本
-当前版本: 0.1.0
+当前版本: 0.1.1
 
 ## 项目概述
 
@@ -50,6 +50,7 @@ src/
 │   └── init_ui.h           # UI初始化接口
 ├── content/
 │   ├── maoselect.h         # 毛泽东选集内容
+│   ├── soul.h              # 禅语哲言内容
 │   └── toxicsoul.h         # 心灵鸡汤内容
 └── includes.h              # 通用头文件包含
 ```
@@ -171,6 +172,7 @@ src/
 - `ScreenManager::showMaoSelectScreen()/showToxicSoulScreen()/showIcibaScreen()/showAstronautsScreen()`: 显示各类屏幕
 - `ScreenManager::hideAllScreens()`: 隐藏所有屏幕元素
 - `ScreenManager::setConfigIconStatus()`: 设置配置模式图标状态
+- `ScreenManager::showSoulScreen()`: 显示禅语哲言屏幕
 
 #### manager/button_manager.h/cpp
 
@@ -218,16 +220,19 @@ src/
 **功能**: 管理各种数据的显示逻辑。
 
 **主要函数**: 
+- `displayCalendar()`: 显示当月日历，包括月份标题、星期标题和日期，支持当前日期高亮显示
 - `displayIcibaDataFromFile()`: 从文件读取JSON数据并显示金山词霸每日信息
 - `displayAstronautsDataFromFile()`: 从文件读取JSON数据并显示宇航员信息
 - `initDisplayManager()`: 初始化显示管理器
 - `testDisplayImageFromUrl()`: 测试从URL显示图片的功能
 
+**优化亮点**: 日历显示已优化日期对齐格式，确保第一行日期与其他内容正确对齐，提升视觉效果。
+
 ## 主要功能
 
 ### 1. 名言警句展示
 
-轮流展示毛泽东选集和心灵鸡汤内容，为用户提供正能量和思考。
+轮流展示毛泽东选集、心灵鸡汤和禅语哲言内容，为用户提供正能量和思考。
 
 ### 2. 金山词霸每日一句
 
@@ -239,7 +244,7 @@ src/
 
 ### 4. 日历显示功能
 
-显示当月日历，并在右下方以大字体突出显示当日日期，日期数字采用两位数格式（如01、02），提高视觉效果和信息清晰度。
+显示当月日历，并在顶部居中以大字体突出显示当日日期，日期数字采用两位数格式（如01、02），提高视觉效果和信息清晰度。日历内容已优化显示对齐，确保日期第一行与其他内容正确对齐。
 
 ### 5. ButtonManager功能
 
@@ -253,7 +258,7 @@ src/
 
 ### 7. Web配置功能
 
-支持通过Web界面配置WiFi信息、城市代码等参数，无需重新编译上传代码。
+支持通过Web界面配置WiFi信息、城市代码等参数，无需重新编译上传代码。标题按钮标签已优化为居中显示，提升用户界面美观度。
 
 ### 8. mDNS功能
 

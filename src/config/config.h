@@ -5,7 +5,7 @@
 #include <Arduino.h>
 
 // 软件版本定义
-#define SOFTWARE_VERSION "0.1.1"
+#define SOFTWARE_VERSION "0.1.2"
 
 // WiFi配置信息已移至ConfigManager类中管理
 // 从data/config.json文件中读取

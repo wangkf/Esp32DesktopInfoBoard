@@ -124,7 +124,7 @@ void TimeManager::init() {
         lv_obj_align(ip_label, LV_ALIGN_TOP_RIGHT, -2, 2); // 右上角对齐，x偏移-2，y偏移2
         lv_label_set_text(ip_label, ""); // 初始为空
         lv_label_set_long_mode(ip_label, LV_LABEL_LONG_SCROLL_CIRCULAR); // 滚动显示
-        lv_obj_set_width(ip_label, screenWidth/2-40); // 设置宽度
+        lv_obj_set_width(ip_label, screenWidth/2-20); // 设置宽度
     }
     
     // 初始化时强制更新分钟显示
@@ -133,24 +133,16 @@ void TimeManager::init() {
     // 创建样式
     static lv_style_t style_line;
     lv_style_init(&style_line);
-    lv_style_set_line_width(&style_line, 2); // 增加宽度使线条更明显
-    lv_style_set_line_color(&style_line, lv_palette_main(LV_PALETTE_RED));
+    lv_style_set_line_width(&style_line, 1); // 增加宽度使线条更明显
+    lv_style_set_line_color(&style_line, lv_palette_main(LV_PALETTE_GREY));
     lv_style_set_line_rounded(&style_line, true);
 
     // 1. 在日期和星期标签下方添加横线
-    //static lv_point_t line_points1[] = { {4, 25}, {190, 25} }; // 稍调整Y坐标
 	static lv_point_t line_points1[] = { {0, 25}, {screenWidth, 25} }; // 稍调整Y坐标
     lv_obj_t * line1 = lv_line_create(lv_scr_act());
-    lv_line_set_points(line1, line_points1, 2);
+    lv_line_set_points(line1, line_points1, 1);
     lv_obj_add_style(line1, &style_line, 0);
     lv_obj_move_foreground(line1); // 移动到前台，确保显示在最上层
-
-    // 2. 在时间标签下方添加横线（考虑48像素字体的高度）
-    static lv_point_t line_points2[] = { {0, 80}, {screenWidth, 80} }; // 稍调整Y坐标
-    lv_obj_t * line2 = lv_line_create(lv_scr_act());
-    lv_line_set_points(line2, line_points2, 2);
-    lv_obj_add_style(line2, &style_line, 0);
-    lv_obj_move_foreground(line2); // 移动到前台，确保显示在最上层
 }
 
 /**

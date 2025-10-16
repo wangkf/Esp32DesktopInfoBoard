@@ -546,7 +546,7 @@ void displayNewsDataFromFile() {
     JsonArray newsArray = doc["result"].as<JsonArray>();
     
     // 显示前几条新闻
-    int displayCount = min(static_cast<int>(newsArray.size()), 16); // 最多显示5条新闻
+    int displayCount = min(static_cast<int>(newsArray.size()), 18); // 最多显示18条新闻
     for (int i = 0; i < displayCount; i++) {
       String newsItem = newsArray[i].as<String>();      
         newsText += "" + newsItem + "\n";

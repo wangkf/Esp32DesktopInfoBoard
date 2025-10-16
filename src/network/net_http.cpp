@@ -5,7 +5,6 @@
 #include "config/config.h"
 #include "config/config_manager.h"
 #include "manager/time_manager.h"
-
 // 声明全局字体
 extern lv_font_t lvgl_font_digital_48;
 #include "manager/data_manager.h"
@@ -13,33 +12,18 @@ extern lv_font_t lvgl_font_digital_48;
 #include <map>
 #include <vector>
 #include <SPIFFS.h>
-
 // 定义强制刷新标志
 bool forceRefreshAstronauts = false;
 bool forceRefreshICIBA = false;
-
 // 外部变量声明
 extern const char* ntpServer;
-
 extern unsigned long lastUpdateTime;
 extern const long updateInterval;
-
-// DataManager单例通过getInstance()方法获取，不需要外部变量
-
 // 缓存数据变量
-String cachedIcibaData = "";
-String cachedAstronautsData = "";
-String cachedISSData = "";
-unsigned long lastIcibaUpdateTime = 0;
 unsigned long lastAstronautsUpdateTime = 0;
-
 // 函数前向声明
 void getICIBADailyInfo();
 void getAstronautsData();
-
-// JSON解析缓冲区
-DynamicJsonDocument docbuffer(4096);
-
 // 文件系统初始化
 bool initFS() {
     if (!SPIFFS.begin(true)) {
@@ -49,7 +33,6 @@ bool initFS() {
     Serial.println("SPIFFS挂载成功");
     return true;
 }
-
 // 从文件读取JSON数据
 bool readJsonFromFile(const String& filename, JsonDocument& doc) {
     File file = SPIFFS.open(filename, "r");
@@ -68,7 +51,6 @@ bool readJsonFromFile(const String& filename, JsonDocument& doc) {
     file.close();
     return true;
 }
-
 // 写入JSON数据到文件，只有在内容变化时才重写文件
 bool writeJsonToFile(const String& filename, const JsonDocument& doc) {
     // 检查文件是否已经存在
@@ -137,7 +119,6 @@ bool writeJsonToFile(const String& filename, const JsonDocument& doc) {
     Serial.println("成功写入文件: " + filename);
     return true;
 }
-
 // 连接WiFi网络
 void setupWiFi() {
   // 使用ConfigManager获取WiFi配置
@@ -167,16 +148,13 @@ void setupWiFi() {
   // 初始化文件系统
   initFS();
 }
-
 // 更新分钟显示（每分钟更新一次）
 void updateMinuteDisplay() {
   struct tm timeinfo;
   if (!getLocalTime(&timeinfo)) {
     return;
   }
-  
-  // 系统启动后只更新NTP数据，其他数据从本地JSON文件读取
-  // 在设定的时间在后台获取并更新JSON数据
+  // 系统启动后只更新NTP数据，其他数据从本地JSON文件读取，在设定的时间在后台获取并更新JSON数据
   if (WiFi.status() == WL_CONNECTED) {
     // 检查是否为整点且分钟为0，小时能被2整除（每2小时更新一次）
     if (timeinfo.tm_min == 0 && timeinfo.tm_hour % 2 == 0 && timeinfo.tm_sec < 10) {
@@ -195,21 +173,13 @@ void updateMinuteDisplay() {
     }
   }
 }
-
-// 更新秒钟显示（每秒更新一次）
-void updateSecondDisplay() {
-  // 此函数已被重构为使用TimeManager类处理
-}
-
 // 更新时间显示（整合函数，供外部调用）
 void updateTimeDisplay() {
   // 调用TimeManager更新时间显示
-  TimeManager::getInstance()->updateTimeDisplay();
-  
+  TimeManager::getInstance()->updateTimeDisplay();  
   // 调用原有的更新逻辑，但不再负责标签显示
   updateMinuteDisplay();
 }
-
 // 获取金山词霸每日信息
 void getICIBADailyInfo() {
   // 委托给DataManager处理
@@ -221,32 +191,8 @@ void getICIBADailyInfo() {
   }
   forceRefreshICIBA = false;
 }
-
-// 标记为强制刷新数据（用于整点更新时调用）
-void forceRefreshData() {
-  forceRefreshICIBA = true;
-  // 强制刷新宇航员数据
-  lastAstronautsUpdateTime = 0;
-}
-
 // 宇航员数据更新函数 - 与updateMinuteDisplay中调用的函数名保持一致
 void getAstronautsData() {
-  getAstronautsInfo();
-}
-
-// 占位符函数实现
-void getCityCode() {
-  // 函数实现待补充
-  Serial.println("getCityCode函数尚未实现");
-}
-
-void getlunar() {
-  // 函数实现待补充
-  Serial.println("getlunar函数尚未实现");
-}
-
-// 获取国际空间站宇航员信息
-void getAstronautsInfo() {
   // 委托给DataManager处理
   String result;
   if (DataManager::getInstance()->fetchData(ASTRONAUTS_DATA, result)) {
@@ -256,108 +202,4 @@ void getAstronautsInfo() {
     Serial.println("获取宇航员信息失败");
   }
   forceRefreshAstronauts = false;
-}
-
-// 定义APRS_MAX_PACKETS常量，保留以兼容旧代码
-
-
-/**
- * 从文件加载并显示金山词霸每日信息
- */
-void net_displayIcibaDataFromFile() {
-  Serial.println("尝试从文件加载金山词霸每日信息");
-  
-  // 确保iciba_label已创建
-  if (iciba_label == NULL || !lv_obj_is_valid(iciba_label)) {
-    if (iciba_label != NULL) {
-      // 确保旧标签被正确清理
-      lv_obj_del(iciba_label);
-    }
-    iciba_label = lv_label_create(lv_scr_act());
-    lv_obj_set_style_text_font(iciba_label, &lvgl_font_song_16, 0);
-    lv_obj_set_style_text_color(iciba_label, lv_color_hex(0x000000), 0); // 默认黑色
-    lv_obj_set_style_text_align(iciba_label, LV_TEXT_ALIGN_LEFT, 0);
-    lv_label_set_long_mode(iciba_label, LV_LABEL_LONG_WRAP); // 设置自动换行
-    lv_obj_set_width(iciba_label, screenWidth - 40); // 设置标签宽度
-    lv_obj_set_height(iciba_label, screenHeight - 120); // 固定高度
-    lv_obj_align(iciba_label, LV_ALIGN_TOP_MID, 0, 100); // 顶部居中对齐，顶部离屏幕顶部100px
-    
-    // 不添加背景和边框效果
-    lv_obj_set_style_bg_opa(iciba_label, 0, 0); // 完全透明背景
-    lv_obj_set_style_border_width(iciba_label, 0, 0); // 无边框
-    lv_obj_set_style_radius(iciba_label, 0, 0); // 无圆角
-    lv_obj_set_style_pad_all(iciba_label, 10, 0); // 内边距
-    
-    Serial.println("创建或重新创建了iciba_label");
-  }
-  
-  // 检查文件是否存在
-  if (SPIFFS.exists("/iciba.json")) {
-    File file = SPIFFS.open("/iciba.json", "r");
-    if (file) {
-      // 读取文件内容
-      String jsonString = file.readString();
-      file.close();
-      
-      // 解析JSON数据
-      DynamicJsonDocument doc(2048);
-      DeserializationError error = deserializeJson(doc, jsonString);
-      
-      if (!error) {
-        Serial.println("成功解析金山词霸数据文件");
-        
-        // 构建显示内容
-        String displayText = "\n";
-        
-        // 获取句子信息（保持访问顶级字段）
-        if (doc.containsKey("content") && doc["content"].is<const char*>()) {
-          displayText += String(doc["content"].as<const char*>()) + "\n\n";
-        }
-        
-        // 获取翻译信息（保持访问顶级字段）
-        if (doc.containsKey("note") && doc["note"].is<const char*>()) {
-          displayText += String(doc["note"].as<const char*>());
-        }
-        
-        // 如果有tts字段，可以显示提示
-        if (doc.containsKey("tts")) {
-          displayText += "\n\n[有发音]";
-        }
-        
-        // 从result对象中获取最后更新时间
-        if (doc.containsKey("result") && doc["result"].is<JsonObject>()) {
-          JsonObject result = doc["result"].as<JsonObject>();
-          if (result.containsKey("last_updated") && result["last_updated"].is<const char*>()) {
-            displayText += "\n\n" + String(result["last_updated"].as<const char*>());
-          }
-        }
-        
-        // 更新金山词霸标签
-        if (iciba_label && lv_obj_is_valid(iciba_label)) {
-          lv_label_set_text(iciba_label, displayText.c_str());
-        }
-        
-        Serial.println("成功显示文件中的金山词霸数据");
-      } else {
-        Serial.print("解析金山词霸数据文件失败: ");
-        Serial.println(error.c_str());
-        
-        if (iciba_label && lv_obj_is_valid(iciba_label)) {
-          lv_label_set_text(iciba_label, "本地金山词霸数据解析失败");
-        }
-      }
-    } else {
-      Serial.println("无法打开金山词霸数据文件");
-      
-      if (iciba_label && lv_obj_is_valid(iciba_label)) {
-        lv_label_set_text(iciba_label, "无法打开本地金山词霸数据文件");
-      }
-    }
-  } else {
-    Serial.println("金山词霸数据文件不存在");
-    
-    if (iciba_label && lv_obj_is_valid(iciba_label)) {
-      lv_label_set_text(iciba_label, "本地金山词霸数据文件不存在");
-    }
-  }
 }

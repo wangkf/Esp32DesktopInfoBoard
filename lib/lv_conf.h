@@ -379,6 +379,8 @@
 #define LV_FONT_MONTSERRAT_28_COMPRESSED 0  /*bpp = 3*/
 #define LV_FONT_DEJAVU_16_PERSIAN_HEBREW 0  /*Hebrew, Arabic, Persian letters and all their forms*/
 #define LVGL_FONT_SONG_16          1  /*Custom song font (使用与LVGL 8.3.7兼容的版本)*/
+#define LVGL_FONT_YAHEI_20         1  /*Custom song font (使用与LVGL 8.3.7兼容的版本)*/
+
 #define LVGL_FONT_DIGITAL_108 1
 
 /*Pixel perfect monospace fonts*/
@@ -388,7 +390,7 @@
 /*Optionally declare custom fonts here.
  *You can use these fonts as default font too and they will be available globally.
  *E.g. #define LV_FONT_CUSTOM_DECLARE   LV_FONT_DECLARE(my_font_1) LV_FONT_DECLARE(my_font_2)*/
-#define LV_FONT_CUSTOM_DECLARE   LV_FONT_DECLARE(lvgl_font_song_16)
+#define LV_FONT_CUSTOM_DECLARE   LV_FONT_DECLARE(lvgl_font_song_16) LV_FONT_DECLARE(lvgl_font_yahei_20) LV_FONT_DECLARE(lvgl_font_digital_48) LV_FONT_DECLARE(lvgl_font_digital_24)
 // 禁用不兼容的lvgl_font_song4_16字体
 #define LVGL_FONT_SONG4_16 0
 

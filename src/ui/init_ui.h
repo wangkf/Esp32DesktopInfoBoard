@@ -22,7 +22,6 @@ extern lv_obj_t* astronauts_img;
 extern lv_obj_t* news_label;
 extern lv_obj_t* calendar_label;
 extern lv_obj_t* calendar_img;
-
 extern lv_obj_t* today_date_label;
 
 // 函数声明

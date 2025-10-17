@@ -29,7 +29,7 @@ unsigned long webConfigStartTime = 0;
 const unsigned long WEB_CONFIG_TIMEOUT = 300000; // 5分钟超时
 
 // 声明全局字体
-extern lv_font_t lvgl_font_digital_48;
+extern const lv_font_t lvgl_font_digital_48;
 
 // LED控制配置
 #define LED_CHANNEL    0       // LED通道
@@ -96,7 +96,6 @@ void initWiFiAndNTP() {
     Serial.println("\nWiFi连接成功");
     Serial.print("IP地址: ");
     Serial.println(WiFi.localIP());
-    
     // 初始化mDNS
     if (!MDNS.begin("ESP32-InfoBoard")) {
       Serial.println("Error setting up MDNS responder!");
@@ -110,17 +109,13 @@ void initWiFiAndNTP() {
     int timezone = configManager->getNTPServerTimezone();
     long gmtOffset_sec = timezone * 3600; // 将时区转换为秒
     const long daylightOffset_sec = 0; // 不使用夏令时
-    
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-    
     // 等待时间同步
     delay(2000);
-    
     // 如果Web配置服务器未运行，则使用STA模式启动它
     if (!WebConfigServer::getInstance()->isServerRunning()) {
       WebConfigServer::getInstance()->start(false); // false表示使用STA模式
-      
-      // 显示当前IP地址在屏幕右上角
+    // 显示当前IP地址在屏幕右上角
       char ipStr[20];
       WiFi.localIP().toString().toCharArray(ipStr, sizeof(ipStr));
       char combinedIpStr[90];
@@ -129,14 +124,12 @@ void initWiFiAndNTP() {
     }
   } else {
     Serial.println("\nWiFi连接失败");
-    
     // WiFi连接失败，启动热点模式的Web服务器
     if (!webConfigMode) {
       webConfigMode = true;
       webConfigStartTime = millis();
       WebConfigServer::getInstance()->start(true); // true表示使用AP模式
       Serial.println("已启动热点模式Web配置，请连接热点ESP32-InfoBoard，访问192.168.4.1");
-      
       // 在AP模式下也初始化mDNS
       if (!MDNS.begin("ESP32-InfoBoard")) {
         Serial.println("Error setting up MDNS responder in AP mode!");
@@ -144,43 +137,22 @@ void initWiFiAndNTP() {
         Serial.println("mDNS responder started in AP mode");
         // 添加HTTP服务
         MDNS.addService("http", "tcp", 80);
-      }
-      
+      }     
       // 显示热点IP地址在屏幕右上角
       TimeManager::getInstance()->setIpInfo("\uF013192.168.4.1", lv_color_hex(0xFF0000));
     }
   }
 }
-
 // 更新屏幕亮度
 void updateBrightness() {
   if (millis() - lastBrightnessUpdateTime >= brightnessUpdateInterval) {
     int lightValue = analogRead(LIGHT_SENSOR_PIN);
-    
-    // 注释掉调试信息
-    /*
-    if (lightValue % 10 == 0) {  // 每10次更新才打印一次，避免过于频繁
-      Serial.printf("光线传感器值: %d\n", lightValue);
-    }
-    */
-    
-    // 将传感器值映射到亮度值（0-255）
-    // 环境越暗，屏幕越亮；环境越亮，屏幕越暗
+    // 将传感器值映射到亮度值（0-255） 环境越暗，屏幕越暗；环境越亮，屏幕越亮
     int brightness = map(lightValue, 0, 4095, 0, 255); 
-    
     // 限制亮度值范围
     brightness = constrain(brightness, 1, 255);
-    
     // 设置屏幕亮度
     ledcWrite(LED_CHANNEL, brightness);
-    
-    // 注释掉调试信息
-    /*
-    if (lightValue % 10 == 0) {
-      Serial.printf("设置屏幕亮度: %d\n", brightness);
-    }
-    */
-    
     lastBrightnessUpdateTime = millis();
   }
 }
@@ -191,37 +163,22 @@ void handleButtonEvents() {
   
   switch (event) {
     case SHORT_PRESS:
-      if (webConfigMode) {
-        // 在配置模式下，单击按钮退出配置模式
-        WebConfigServer::getInstance()->stop();
-        webConfigMode = false;
-        Serial.println("已退出Web配置模式");
-        // 停止mDNS服务
-        MDNS.end();
-        Serial.println("mDNS responder stopped");
-        // 重新连接WiFi
-        initWiFiAndNTP();
-      } else {
-        // 正常模式下，单击切换屏幕
-        ScreenManager::getInstance()->toggleScreen();
-        lastScreenChangeTime = millis(); // 重置自动换屏计时器
-      }
+      // 正常模式下，单击切换屏幕
+      ScreenManager::getInstance()->toggleScreen();
+      lastScreenChangeTime = millis(); // 重置自动换屏计时器
       break;
       
     case DOUBLE_CLICK:
-      if (!webConfigMode) {
         // 正常模式下，双击切换自动换屏模式
         autoScreenChangeEnabled = !autoScreenChangeEnabled;
         Serial.print("自动换屏模式: ");
         Serial.println(autoScreenChangeEnabled ? "开启" : "关闭");
-        
         // 增加视觉反馈，显示自动换屏状态
         TimeManager::getInstance()->setStatusInfo(
           autoScreenChangeEnabled ? "自动换屏: 开启" : "自动换屏: 关闭", 
           autoScreenChangeEnabled ? lv_color_hex(0x00FF00) : lv_color_hex(0xFF0000), 
           true
         );
-      }
       break;
       
     case LONG_PRESS:
@@ -229,12 +186,10 @@ void handleButtonEvents() {
         // 长按开启Web配置模式
         webConfigMode = true;
         webConfigStartTime = millis();
-        
         // 如果当前已连接WiFi，则使用STA模式启动Web服务器
         // 否则使用AP模式（热点）启动
         bool useAPMode = (WiFi.status() != WL_CONNECTED);
         WebConfigServer::getInstance()->start(useAPMode);
-        
         // 在Web配置模式下初始化mDNS
         if (!MDNS.begin("ESP32-InfoBoard")) {
           Serial.println("Error setting up MDNS responder in Web config mode!");
@@ -283,8 +238,8 @@ void handleAutoScreenChange() {
     time(&now);
     localtime_r(&now, &timeinfo);
     
-    // 检查秒数是否能被30整除
-    if (timeinfo.tm_sec % 30 == 0) {
+    // 检查秒数是否能被15或30整除
+    if (timeinfo.tm_sec % updateInterval == 0) {
       // 获取当前时间的毫秒数
       unsigned long currentMillis = millis();
       
@@ -413,7 +368,7 @@ void displayTask(void *pvParameters) {
           // 创建或更新配置信息标签
           if (config_label == nullptr || !lv_obj_is_valid(config_label)) {
             config_label = lv_label_create(lv_scr_act());
-            lv_obj_set_style_text_font(config_label, &lvgl_font_song_16, 0);
+            lv_obj_set_style_text_font(config_label, GBFont, 0);
             lv_obj_set_style_text_color(config_label, lv_color_hex(0x00FF00), 0);
             lv_obj_set_width(config_label, screenWidth - 10); // 稍宽一些，留出边距
             lv_obj_align(config_label, LV_ALIGN_BOTTOM_MID, 0, -10); // 底部中央对齐，距离底部10像素

@@ -676,7 +676,7 @@ static bool __user_font_get_glyph_dsc(const lv_font_t * font, lv_font_glyph_dsc_
 //字模高度：62
 //内部字体
 //使用排序和二分查表
-lv_font_t lvgl_font_digital_48 = {
+const lv_font_t lvgl_font_digital_48 = {
     .dsc = &font_dsc,
     .get_glyph_bitmap = __user_font_get_bitmap,
     .get_glyph_dsc = __user_font_get_glyph_dsc,

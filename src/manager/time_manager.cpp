@@ -4,31 +4,18 @@
 #include "lvgl.h"
 #include "esp_log.h"
 #include <TFT_eSPI.h>
-
 // 声明外部TFT对象
 extern TFT_eSPI tft;
-
-// 字体定义
-extern const lv_font_t lvgl_font_digital_24;
-extern const lv_font_t lvgl_font_digital_48;
-extern const lv_font_t lvgl_font_song_16;
-
 // 定义单例实例
 TimeManager* TimeManager::instance = nullptr;
-
 // 定义日志标签
 static const char* TAG = "TimeManager";
-
 // 定义中文星期数组
 const char* weekDays[] = {"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
-
 // 声明配置中的屏幕尺寸
 extern const uint32_t screenWidth;
 extern const uint32_t screenHeight;
-
-/**
- * 私有构造函数
- */
+//*** 私有构造函数
 TimeManager::TimeManager() {
     // 初始化时间变量
     currentHour = 0;
@@ -47,20 +34,14 @@ TimeManager::TimeManager() {
     status_label = nullptr;
     ip_label = nullptr;
 }
-
-/**
- * 获取单例实例
- */
+//*** 获取单例实例
 TimeManager* TimeManager::getInstance() {
     if (instance == nullptr) {
         instance = new TimeManager();
     }
     return instance;
 }
-
-/**
- * 初始化时间管理器
- */
+//*** 初始化时间管理器
 void TimeManager::init() {
     Serial.println("初始化时间管理器");
     // === 时分标签（hour_minute_label）=== 位置：左上角对齐，x偏移5，y偏移30
@@ -86,7 +67,7 @@ void TimeManager::init() {
     // === 日期标签（date_label）=== 位置：顶部中间对齐，x偏移0，y偏移2
     if (!date_label) {
         date_label = lv_label_create(lv_scr_act());
-        lv_obj_set_style_text_font(date_label, &lvgl_font_song_16, 0); // 16像素宋体
+        lv_obj_set_style_text_font(date_label, GBFont, 0); // 使用配置的中文字体
         lv_obj_set_style_text_color(date_label, lv_color_hex(0xFFFF00), 0); // 黄色
         lv_obj_align(date_label, LV_ALIGN_TOP_LEFT, 0, 2); // 位置：顶部中间对齐，x偏移0，y偏移2
         lv_obj_set_width(date_label, 120); // 设置足够的宽度确保显示完整
@@ -97,7 +78,7 @@ void TimeManager::init() {
     // === 星期标签（weekday_label）=== 位置：顶部中间对齐，x偏移0，y偏移22
     if (!weekday_label) {
         weekday_label = lv_label_create(lv_scr_act());
-        lv_obj_set_style_text_font(weekday_label, &lvgl_font_song_16, 0); // 16像素宋体
+        lv_obj_set_style_text_font(weekday_label, GBFont, 0); // 使用配置的中文字体
         lv_obj_set_style_text_color(weekday_label, lv_color_hex(0xFFFF00), 0); // 蓝色
         lv_obj_align(weekday_label, LV_ALIGN_TOP_LEFT, 120, 2); // 位置：顶部中间对齐，x偏移0，y偏移22
         lv_label_set_text(weekday_label, "星期日");
@@ -107,7 +88,7 @@ void TimeManager::init() {
     // === 状态标签（status_label）=== 位置：星期标签右侧，延伸到最右边
     if (!status_label) {
         status_label = lv_label_create(lv_scr_act());
-        lv_obj_set_style_text_font(status_label, &lvgl_font_song_16, 0); // 16像素宋体
+        lv_obj_set_style_text_font(status_label, GBFont, 0); // 使用配置的中文字体
         lv_obj_set_style_text_color(status_label, lv_color_hex(0x008000), 0); // 默认绿色
         lv_obj_align(status_label, LV_ALIGN_TOP_LEFT, 200, 2); // 星期标签右侧
         lv_obj_set_width(status_label, screenWidth - 200); // 长度到最右边
@@ -119,7 +100,7 @@ void TimeManager::init() {
     // === IP地址标签（ip_label）=== 位置：屏幕右上角
     if (!ip_label) {
         ip_label = lv_label_create(lv_scr_act());
-        lv_obj_set_style_text_font(ip_label, &lvgl_font_song_16, 0); // 16像素宋体
+        lv_obj_set_style_text_font(ip_label, GBFont, 0); // 使用配置的中文字体
         lv_obj_set_style_text_color(ip_label, lv_color_hex(0xFF0000), 0); // 默认红色
         lv_obj_align(ip_label, LV_ALIGN_TOP_RIGHT, -2, 2); // 右上角对齐，x偏移-2，y偏移2
         lv_label_set_text(ip_label, ""); // 初始为空
@@ -144,13 +125,9 @@ void TimeManager::init() {
     lv_obj_add_style(line1, &style_line, 0);
     lv_obj_move_foreground(line1); // 移动到前台，确保显示在最上层
 }
-
-/**
- * 更新时间显示
- */
+//*** 更新时间显示
 void TimeManager::updateTimeDisplay() {
-    unsigned long currentTime = millis();
-    
+    unsigned long currentTime = millis();  
     // 获取当前时间
     time_t now;
     struct tm timeinfo;
@@ -177,10 +154,7 @@ void TimeManager::updateTimeDisplay() {
         forceUpdateMinute = false;
     }
 }
-
-/**
- * 更新分钟显示
- */
+//*** 更新分钟显示
 void TimeManager::updateMinuteDisplay() {
     // 获取当前时间
     time_t now;
@@ -217,41 +191,29 @@ void TimeManager::updateMinuteDisplay() {
         lv_obj_clear_flag(weekday_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
     }
 }
-
-/**
- * 更新秒显示
- */
+//*** 更新秒显示
 void TimeManager::updateSecondDisplay() {
     // 获取当前时间
     time_t now;
     struct tm timeinfo;
     time(&now);
     localtime_r(&now, &timeinfo);
-    
     // 更新当前秒
     currentSecond = timeinfo.tm_sec;
-    
     // 格式化秒
     char secondStringBuff[3]; // 格式为 SS
     snprintf(secondStringBuff, sizeof(secondStringBuff), "%02d", currentSecond);
-    
     // 更新秒标签
     if (second_label) {
         lv_label_set_text(second_label, secondStringBuff);
         lv_obj_clear_flag(second_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
     }
 }
-
-/**
- * 设置强制更新分钟显示
- */
+//*** 设置强制更新分钟显示
 void TimeManager::setForceUpdateMinute(bool forceUpdate) {
     forceUpdateMinute = forceUpdate;
 }
-
-/**
- * 设置状态信息
- */
+//*** 设置状态信息
 void TimeManager::setStatusInfo(const char* info, lv_color_t color, bool scroll) {
     if (status_label) {
         lv_label_set_text(status_label, info);
@@ -272,19 +234,13 @@ void TimeManager::setStatusInfo(const char* info, lv_color_t color, bool scroll)
         lv_obj_clear_flag(status_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
     }
 }
-
-/**
- * 清除状态信息
- */
+//*** 清除状态信息
 void TimeManager::clearStatusInfo() {
     if (status_label) {
         lv_label_set_text(status_label, "");
     }
 }
-
-/**
- * 设置IP地址信息
- */
+//*** 设置IP地址信息
 void TimeManager::setIpInfo(const char* info, lv_color_t color) {
     if (ip_label) {
         lv_label_set_text(ip_label, info);
@@ -292,19 +248,13 @@ void TimeManager::setIpInfo(const char* info, lv_color_t color) {
         lv_obj_clear_flag(ip_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
     }
 }
-
-/**
- * 清除IP地址信息
- */
+//*** 清除IP地址信息
 void TimeManager::clearIpInfo() {
     if (ip_label) {
         lv_label_set_text(ip_label, "");
     }
 }
-
-/**
- * 强制更新所有时间显示
- */
+//*** 强制更新所有时间显示
 void TimeManager::forceUpdateAll() {
     updateMinuteDisplay();
     updateSecondDisplay();

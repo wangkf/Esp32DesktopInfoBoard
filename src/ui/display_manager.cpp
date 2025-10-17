@@ -16,7 +16,6 @@ extern lv_obj_t* calendar_label;
 // 全局变量
 extern const uint32_t screenWidth;
 extern const uint32_t screenHeight;
-
 /**
  * 从SPIFFS加载图片并使用LVGL显示
  * @param filename SPIFFS中的文件名
@@ -26,60 +25,46 @@ extern const uint32_t screenHeight;
  */
 lv_obj_t* displayImageFromSPIFFS(const char* filename, int x, int y) {
   Serial.println("尝试从SPIFFS加载图片: " + String(filename));
-  
   // 检查文件是否存在
   if (!SPIFFS.exists(filename)) {
     Serial.println("文件不存在: " + String(filename));
     return NULL;
   }
-  
   // 获取文件大小
   File file = SPIFFS.open(filename, "r");
   if (!file) {
     Serial.println("打开文件失败: " + String(filename));
     return NULL;
   }
-  
   size_t fileSize = file.size();
   file.close(); // 只需要检查文件是否存在和大小，不需要保持打开
-  
   Serial.printf("文件大小: %u 字节\n", fileSize);
-  
   // 创建LVGL图像对象
   lv_obj_t* img = lv_img_create(lv_scr_act());
   if (!img) {
     Serial.println("创建LVGL图像对象失败");
     return NULL;
   }
-  
   // 确保图像对象在最顶层显示
   lv_obj_move_foreground(img);
-  
   // 使用LVGL内置的PNG解码器加载图片
   // 为SPIFFS文件添加正确的文件系统前缀
   String lvglFilePath = "S:";
   lvglFilePath += filename;
-  
   Serial.println("LVGL文件路径: " + lvglFilePath);
-  
   // 使用带文件系统前缀的路径设置图像源
   lv_img_set_src(img, lvglFilePath.c_str());
   Serial.println("已设置图像源");
-  
   // 设置图像位置
   lv_obj_set_pos(img, x, y);
-  
   // 设置图像样式
   lv_obj_set_style_border_width(img, 0, 0);
   lv_obj_set_style_radius(img, 0, 0);
   lv_obj_set_style_bg_opa(img, 0, 0); // 透明背景
-  
   // 显式刷新LVGL显示
   lv_refr_now(lv_disp_get_default());
   lv_task_handler();
-  
   Serial.println("图片显示成功，已刷新显示");
-  
   return img;
 }
 
@@ -95,7 +80,7 @@ void createAndInitLabel(lv_obj_t* &label, const char* labelName) {
       lv_obj_del(label);
     }
     label = lv_label_create(lv_scr_act());
-    lv_obj_set_style_text_font(label, &lvgl_font_song_16, 0);
+    lv_obj_set_style_text_font(label, GBFont, 0);
     lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), 0); // 白色文字，适配黑色背景
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, 0);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP); // 设置自动换行
@@ -245,13 +230,11 @@ bool readJsonFromFile(const char* fileName, JsonDocument& doc) {
   return true;
 }
 
-
-
 /**
  * 显示金山词霸每日信息
  */
 void displayIcibaDataFromFile() {
-  Serial.print("从文件显示金山词霸数据");
+  Serial.println("从文件显示金山词霸数据");
   
   JsonDocument doc;
   if (!readJsonFromFile("/iciba.json", doc)) {
@@ -320,7 +303,7 @@ void displayIcibaDataFromFile() {
  * 显示留言板内容
  */
 void displayNoteDataFromFile() {
-  Serial.print("从文件显示留言板内容");
+  Serial.println("从文件显示留言板内容");
   
   // 外部声明note_label
   extern lv_obj_t* note_label;
@@ -388,7 +371,7 @@ void displayNoteDataFromFile() {
  * 显示宇航员信息
  */
 void displayAstronautsDataFromFile() {
-  Serial.print("从文件显示宇航员数据");
+  Serial.println("从文件显示宇航员数据");
   
   // 确保astronauts_label已创建和初始化
   createAndInitLabel(astronauts_label, "astronauts_label");
@@ -496,13 +479,13 @@ void displayAstronautsDataFromFile() {
  * 显示新闻信息
  */
 void displayNewsDataFromFile() {
-  Serial.print("从文件显示新闻数据");
+  Serial.println("从文件显示新闻数据");
   
   // 确保news_label已创建和初始化
   if (!news_label) {
     Serial.println("news_label未创建，创建并初始化");
     news_label = lv_label_create(lv_scr_act());
-    lv_obj_set_style_text_font(news_label, &lvgl_font_song_16, 0);
+    lv_obj_set_style_text_font(news_label, GBFont, 0);
     lv_obj_set_style_text_color(news_label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_width(news_label, screenWidth - 20);
     lv_obj_set_height(news_label, screenHeight - 120);

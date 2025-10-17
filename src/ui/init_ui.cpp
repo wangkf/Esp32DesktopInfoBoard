@@ -6,10 +6,10 @@
 #include "../images/images.h"
 #include "ui_utils.h"
 // 声明全局字体
-extern lv_font_t lvgl_font_digital_24;
-extern lv_font_t lvgl_font_digital_48;
-extern lv_font_t lvgl_font_digital_108;
-extern lv_font_t lvgl_font_digital_64;
+extern const lv_font_t lvgl_font_digital_24;
+extern const lv_font_t lvgl_font_digital_48;
+extern const lv_font_t lvgl_font_digital_108;
+extern const lv_font_t lvgl_font_digital_64;
 // LVGL对象定义
 lv_obj_t* mao_select_label = nullptr;
 lv_obj_t* toxic_soul_label = nullptr;
@@ -72,16 +72,16 @@ void initUI() {
   lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x000000), 0);
   
 // 使用通用函数创建所有标签
-news_label =       createLabel(&lvgl_font_song_16,     lv_color_hex(0xFFFFFF),  0, 85,screenHeight-85,  lv_color_hex(0xdddddd));
-calendar_label =   createLabel(&lvgl_font_song_16,     lv_color_hex(0xFFFFFF), 120, 240);
+news_label =       createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 85,screenHeight-85,  lv_color_hex(0xdddddd));
+calendar_label =   createLabel(GBFont,     lv_color_hex(0xFFFFFF), 120, 240);
 today_date_label = createLabel(&lvgl_font_digital_108, lv_color_hex(0xFF0000),  0, 85, 0, lv_color_hex(0x000000), LV_OPA_TRANSP, false);
-iciba_label =      createLabel(&lvgl_font_song_16,     lv_color_hex(0xFFFFFF),  0, 85, screenHeight-85, lv_color_hex(0x3E92F2));
-astronauts_label = createLabel(&lvgl_font_song_16,     lv_color_hex(0xFFFFFF),  0, 85,screenHeight-85,  lv_color_hex(0x000080));
-mao_select_label = createLabel(&lvgl_font_song_16,     lv_color_hex(0xFFFFFF),  0, 220);  
-toxic_soul_label = createLabel(&lvgl_font_song_16,     lv_color_hex(0xFFFFFF),  0, 85, screenHeight-85, lv_color_hex(0xFFCF03));
-soul_label =       createLabel(&lvgl_font_song_16,     lv_color_hex(0xFFFFFF),  0, 85,screenHeight-85,  lv_color_hex(0xE49E00));
+iciba_label =      createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 85, screenHeight-85, lv_color_hex(0x3E92F2));
+astronauts_label = createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 85,screenHeight-85,  lv_color_hex(0x000080));
+mao_select_label = createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 220);  
+toxic_soul_label = createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 85, screenHeight-85, lv_color_hex(0xFFCF03));
+soul_label =       createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 85,screenHeight-85,  lv_color_hex(0xE49E00));
 // 创建留言板标签
-note_label =       createLabel(&lvgl_font_song_16, lv_color_hex(0xFFFFFF),  0, 110);
+note_label =       createLabel(GBFont, lv_color_hex(0xFFFFFF),  0, 110);
 
 // 使用通用函数创建所有图像
 calendar_img   = createImage(&calendar,  120, 120,   0, 360);

@@ -43,6 +43,6 @@ lv_obj_t* createImage(const void* src, int width, int height, int xOfs, int yOfs
   // 设置对齐方式和偏移
   lv_obj_set_pos(img, xOfs, yOfs);
   // 设置隐藏标志
-    lv_obj_add_flag(img, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(img, LV_OBJ_FLAG_HIDDEN);
   return img;
 }

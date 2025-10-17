@@ -6,7 +6,7 @@
 #include "config/config_manager.h"
 #include "manager/time_manager.h"
 // 声明全局字体
-extern lv_font_t lvgl_font_digital_48;
+extern const lv_font_t lvgl_font_digital_48;
 #include "manager/data_manager.h"
 #include <time.h>
 #include <map>
@@ -18,7 +18,6 @@ bool forceRefreshICIBA = false;
 // 外部变量声明
 extern const char* ntpServer;
 extern unsigned long lastUpdateTime;
-extern const long updateInterval;
 // 缓存数据变量
 unsigned long lastAstronautsUpdateTime = 0;
 // 函数前向声明

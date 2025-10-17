@@ -98,9 +98,7 @@ void createAndInitLabel(lv_obj_t* &label, const char* labelName) {
   }
 }
 
-/**
- * 显示日历信息
- */
+//*** 显示日历信息
 void displayCalendar() {
   Serial.print("显示日历信息");
   
@@ -226,13 +224,9 @@ bool readJsonFromFile(const char* fileName, JsonDocument& doc) {
     Serial.printf("解析JSON失败: %s, 错误: %s\n", fileName, error.f_str());
     return false;
   }
-
   return true;
 }
-
-/**
- * 显示金山词霸每日信息
- */
+//*** 显示金山词霸每日信息
 void displayIcibaDataFromFile() {
   Serial.println("从文件显示金山词霸数据");
   
@@ -298,10 +292,7 @@ void displayIcibaDataFromFile() {
     lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
   }
 }
-
-/**
- * 显示留言板内容
- */
+//*** 显示留言板内容
 void displayNoteDataFromFile() {
   Serial.println("从文件显示留言板内容");
   
@@ -340,25 +331,6 @@ void displayNoteDataFromFile() {
   } else {
     noteText += "暂无留言内容";
   }
-  
-  // 添加更新时间（如果有）
-  /*
-  if (doc.containsKey("update_time")) {
-    if (doc["update_time"].is<unsigned long>()) {
-      // 将时间戳转换为可读格式
-      unsigned long timestamp = doc["update_time"].as<unsigned long>();
-      time_t now = timestamp / 1000; // 转换为秒
-      struct tm *timeinfo = localtime(&now);
-      if (timeinfo != nullptr) {
-        char timeString[20];
-        strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", timeinfo);
-        noteText += "\n\n更新时间: " + String(timeString);
-      }
-    } else if (doc["update_time"].is<const char*>()) {
-      noteText += "\n\n更新时间: " + String(doc["update_time"].as<const char*>());
-    }
-  }
-  */
   // 更新留言板标签
   if (note_label && lv_obj_is_valid(note_label)) {
     lv_label_set_text(note_label, noteText.c_str());
@@ -366,10 +338,7 @@ void displayNoteDataFromFile() {
     lv_obj_move_foreground(note_label); // 确保标签显示在最上层
   }
 }
-
-/**
- * 显示宇航员信息
- */
+//*** 显示宇航员信息
 void displayAstronautsDataFromFile() {
   Serial.println("从文件显示宇航员数据");
   
@@ -399,7 +368,7 @@ void displayAstronautsDataFromFile() {
     JsonArray peopleArray = doc["people"].as<JsonArray>();
     
     // 构建宇航员显示文本
-    String astronautsText = "太空宇航员列表\n";
+    String astronautsText = "太空宇航员列表\n\n";
     
     // 遍历宇航员数组
     for (JsonVariant astronaut : peopleArray) {
@@ -474,13 +443,9 @@ void displayAstronautsDataFromFile() {
     }
   }
 }
-
-/**
- * 显示新闻信息
- */
+//*** 显示新闻信息
 void displayNewsDataFromFile() {
   Serial.println("从文件显示新闻数据");
-  
   // 确保news_label已创建和初始化
   if (!news_label) {
     Serial.println("news_label未创建，创建并初始化");
@@ -504,7 +469,6 @@ void displayNewsDataFromFile() {
     }
     return;
   }
-
   // 获取更新时间
   String updateTime = "";
   if (doc.containsKey("update_time")) {
@@ -522,12 +486,10 @@ void displayNewsDataFromFile() {
       updateTime = doc["update_time"].as<const char*>();
     }
   }
-  
   String newsText = ""; 
   // 检查是否有新闻列表
   if (doc.containsKey("result") && doc["result"].is<JsonArray>()) {
     JsonArray newsArray = doc["result"].as<JsonArray>();
-    
     // 显示前几条新闻
     int displayCount = min(static_cast<int>(newsArray.size()), 18); // 最多显示18条新闻
     for (int i = 0; i < displayCount; i++) {
@@ -542,7 +504,6 @@ void displayNewsDataFromFile() {
       newsText += "暂无新闻内容";
     }
   }
-  
   // 更新新闻标签
   if (news_label && lv_obj_is_valid(news_label)) {
     lv_label_set_text(news_label, newsText.c_str());
@@ -550,10 +511,7 @@ void displayNewsDataFromFile() {
     lv_obj_move_foreground(news_label);
   }
 }
-
-/**
- * 初始化显示管理器
- */
+//*** 初始化显示管理器
 void initDisplayManager() {
   Serial.println("初始化显示管理器");
   

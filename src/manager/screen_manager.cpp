@@ -467,7 +467,6 @@ if (toxic_soul_label && lv_obj_is_valid(toxic_soul_label)) {
     lv_obj_move_foreground(toxic_soul_label);
   }
 }
-
 //*** 显示随机的禅语哲言
 void ScreenManager::showRandomSoul() {
     // 确保soul_img被创建并显示在底部

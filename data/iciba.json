@@ -1,9 +1,18 @@
 {
-  "result": {
-    "last_updated": "2025-10-09 20:10:34"
-  },
-  "tts": "https://staticedu-wps.cache.iciba.com/audio/90a3fb5df92f88c5b24eb0e0e71cf63a.mp3",
-  "content": "Perspective changes everything.",
-  "note": "视角改变一切。",
-  "fenxiang_img": "https://staticedu-wps.cache.iciba.com/image/2eaf227b00e33d8a32e773a1a3666269.png"
+  "sid": "5749",
+  "tts": "https://staticedu-wps.cache.iciba.com/audio/f845c6c4235afc65a11d9472b00d398a.mp3",
+  "content": "Biodiversity is Earth's safety net. ",
+  "note": "生物多样性是地球的安全网。",
+  "love": "0",
+  "translation": "新版每日一句",
+  "picture": "https://staticedu-wps.cache.iciba.com/image/86503ebcf5c2d5a03e0893ea3e0f1100.jpg",
+  "picture2": "https://staticedu-wps.cache.iciba.com/image/5ecc6185e18bed0c682854cb61f93cbc.png",
+  "caption": "词霸每日一句",
+  "dateline": "2025-10-20",
+  "s_pv": "0",
+  "sp_pv": "0",
+  "fenxiang_img": "https://staticedu-wps.cache.iciba.com/image/23ded51c77a7a1bbfa55b766838cbf54.png",
+  "picture3": "https://staticedu-wps.cache.iciba.com/image/4b4d1b8751740c7a4cf8672ff7418216.jpg",
+  "picture4": "https://staticedu-wps.cache.iciba.com/image/49d80adc4182bc48dd7307b06b4c18fa.jpg",
+  "tags": []
 }

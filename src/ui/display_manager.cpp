@@ -1,3 +1,4 @@
+#include "config/config.h"
 #include "includes.h"
 #include <map>
 #include <vector>
@@ -6,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <lvgl.h>
 #include <time.h>
+#include "config/config_manager.h"
 
 // 外部变量声明
 extern lv_obj_t* iciba_label;
@@ -81,7 +83,12 @@ void createAndInitLabel(lv_obj_t* &label, const char* labelName) {
     }
     label = lv_label_create(lv_scr_act());
     lv_obj_set_style_text_font(label, GBFont, 0);
-    lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), 0); // 白色文字，适配黑色背景
+    
+    // 获取主题配置
+    bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
+    uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
+    
+    lv_obj_set_style_text_color(label, lv_color_hex(textColor), 0);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, 0);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP); // 设置自动换行
     lv_obj_set_width(label, screenWidth - 40); // 设置标签宽度
@@ -95,6 +102,12 @@ void createAndInitLabel(lv_obj_t* &label, const char* labelName) {
     lv_obj_set_style_pad_all(label, 10, 0); // 内边距
     
     Serial.println("创建或重新创建了" + String(labelName));
+  }
+  else {
+    // 更新标签颜色
+    bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
+    uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
+    lv_obj_set_style_text_color(label, lv_color_hex(textColor), 0);
   }
 }
 
@@ -191,6 +204,13 @@ void displayCalendar() {
     calendarText += "\n";
   }
   
+  // 获取主题配置
+  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
+  uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
+  
+  // 更新标签颜色
+  lv_obj_set_style_text_color(calendar_label, lv_color_hex(textColor), 0);
+  
   // 更新标签文本
   lv_label_set_text(calendar_label, calendarText.c_str());
   
@@ -286,8 +306,15 @@ void displayIcibaDataFromFile() {
       icibaText += "暂无翻译";
     }
   
+  // 获取主题配置
+  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
+  uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
+  
   // 更新金山词霸标签
   if (iciba_label && lv_obj_is_valid(iciba_label)) {
+    // 更新标签颜色
+    lv_obj_set_style_text_color(iciba_label, lv_color_hex(textColor), 0);
+    
     lv_label_set_text(iciba_label, icibaText.c_str());
     lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
   }
@@ -331,8 +358,15 @@ void displayNoteDataFromFile() {
   } else {
     noteText += "暂无留言内容";
   }
+  // 获取主题配置
+  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
+  uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
+  
   // 更新留言板标签
   if (note_label && lv_obj_is_valid(note_label)) {
+    // 更新标签颜色
+    lv_obj_set_style_text_color(note_label, lv_color_hex(textColor), 0);
+    
     lv_label_set_text(note_label, noteText.c_str());
     lv_obj_clear_flag(note_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
     lv_obj_move_foreground(note_label); // 确保标签显示在最上层
@@ -379,8 +413,18 @@ void displayAstronautsDataFromFile() {
       }
     }
     
+    // 获取主题配置
+  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
+  uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
+  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000; // 白天白色背景，黑夜黑色背景
+    
     // 更新宇航员标签
     if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
+      // 更新标签颜色和背景色
+      lv_obj_set_style_text_color(astronauts_label, lv_color_hex(textColor), 0);
+      lv_obj_set_style_bg_color(astronauts_label, lv_color_hex(bgColor), 0);
+      lv_obj_set_style_bg_opa(astronauts_label, 255, 0); // 完全不透明背景
+      
       lv_label_set_text(astronauts_label, astronautsText.c_str());
       lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
       lv_obj_move_foreground(astronauts_label); // 确保标签显示在最上层
@@ -446,22 +490,7 @@ void displayAstronautsDataFromFile() {
 //*** 显示新闻信息
 void displayNewsDataFromFile() {
   Serial.println("从文件显示新闻数据");
-  // 确保news_label已创建和初始化
-  if (!news_label) {
-    Serial.println("news_label未创建，创建并初始化");
-    news_label = lv_label_create(lv_scr_act());
-    lv_obj_set_style_text_font(news_label, GBFont, 0);
-    lv_obj_set_style_text_color(news_label, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_width(news_label, screenWidth - 20);
-    lv_obj_set_height(news_label, screenHeight - 120);
-    lv_obj_align(news_label, LV_ALIGN_TOP_LEFT, 10, 100);
-    lv_label_set_long_mode(news_label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_radius(news_label, 10, 0);
-    lv_obj_set_style_bg_color(news_label, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_bg_opa(news_label, 100, 0);
-  }
-  
-  JsonDocument doc;
+    JsonDocument doc;
   if (!readJsonFromFile("/news.json", doc)) {
     if (news_label && lv_obj_is_valid(news_label)) {
       lv_label_set_text(news_label, "无法读取新闻数据文件");
@@ -504,8 +533,18 @@ void displayNewsDataFromFile() {
       newsText += "暂无新闻内容";
     }
   }
+  // 获取主题配置
+  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
+  uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
+  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000; // 白天白色背景，黑夜黑色背景
+  
   // 更新新闻标签
   if (news_label && lv_obj_is_valid(news_label)) {
+    // 更新标签颜色和背景色
+    lv_obj_set_style_text_color(news_label, lv_color_hex(textColor), 0);
+    lv_obj_set_style_bg_color(news_label, lv_color_hex(bgColor), 0);
+    lv_obj_set_style_bg_opa(news_label, 255, 0); // 完全不透明背景
+    
     lv_label_set_text(news_label, newsText.c_str());
     lv_obj_clear_flag(news_label, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(news_label);

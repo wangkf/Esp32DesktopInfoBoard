@@ -39,6 +39,9 @@ private:
     
     // 处理留言板内容请求
     void handleNote();
+    
+    // 处理主题设置请求
+    void handleTheme();
 
     // 读取WiFi配置
     void readWiFiConfig(String& ssid, String& password);

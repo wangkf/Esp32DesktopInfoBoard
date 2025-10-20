@@ -4,7 +4,8 @@
 #include <Arduino.h>
 #include "lvgl.h"
 // 字体定义 - 方便后续更换字体
-#define GBFont &lvgl_font_song_16
+extern const lv_font_t lvgl_font_yahei_16;
+#define GBFont &lvgl_font_yahei_16
 // 软件版本定义
 #define SOFTWARE_VERSION "0.1.3"
 // NTP服务器配置

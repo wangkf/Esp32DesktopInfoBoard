@@ -56,6 +56,7 @@ bool ConfigManager::init() {
         configDoc["wifi"]["ssid"] = "Mywifi";
         configDoc["wifi"]["password"] = "12345678";
         configDoc["ntp"]["timezone"] = 8;
+        configDoc["display"]["light_theme"] = false; // 默认使用黑夜主题
         configLoaded = true;
         
         // 保存默认配置到文件
@@ -142,6 +143,36 @@ bool ConfigManager::setNTPServerTimezone(int timezone) {
     } else {
         JsonObject ntpObj = configDoc.createNestedObject("ntp");
         ntpObj["timezone"] = timezone;
+    }
+    
+    return saveConfigToFile();
+}
+
+// 获取显示主题配置 (true: 白天主题, false: 黑夜主题)
+bool ConfigManager::getDisplayTheme() {
+    if (!configLoaded || !configDoc.containsKey("display")) {
+        return false; // 默认返回黑夜主题
+    }
+    
+    JsonObject displayObj = configDoc["display"];
+    if (displayObj.containsKey("light_theme")) {
+        return displayObj["light_theme"].as<bool>();
+    }
+    
+    return false; // 默认返回黑夜主题
+}
+
+// 设置显示主题配置
+bool ConfigManager::setDisplayTheme(bool isLightTheme) {
+    if (!configLoaded) {
+        return false;
+    }
+    
+    if (configDoc.containsKey("display")) {
+        configDoc["display"]["light_theme"] = isLightTheme;
+    } else {
+        JsonObject displayObj = configDoc.createNestedObject("display");
+        displayObj["light_theme"] = isLightTheme;
     }
     
     return saveConfigToFile();

@@ -421,7 +421,7 @@ bool DataManager::isTwoHourIntervalOnTheHour() {
  */
 void DataManager::checkAndUpdateOnTheHour() {
     if (isTwoHourIntervalOnTheHour()) {
-        // 在整点时更新数据 - 新闻功能已移除
+        // 在整点时更新数据
         shouldUpdateAllData = true;
     }
 }

@@ -19,9 +19,7 @@
  * @param hidden 是否默认隐藏（默认true）
  * @return 创建的标签对象指针
  */
-lv_obj_t* createLabel(const lv_font_t* font, lv_color_t textColor, int xOfs, int yOfs, 
-                     int height = 0, lv_color_t bgColor = lv_color_hex(0x000000), lv_opa_t bgOpacity = LV_OPA_TRANSP, 
-                     bool wrap = true, bool hidden = true);
+lv_obj_t* createLabel(const lv_font_t* font, lv_color_t textColor, int xOfs, int yOfs, int height = 0, lv_color_t bgColor = lv_color_hex(0x000000), lv_opa_t bgOpacity = LV_OPA_TRANSP, bool wrap = true, bool hidden = true);
 
 /**
  * 创建图像的通用函数

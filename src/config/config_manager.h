@@ -41,6 +41,12 @@ public:
     // 设置NTP时区配置
     bool setNTPServerTimezone(int timezone);
     
+    // 获取显示主题配置 (true: 白天主题, false: 黑夜主题)
+    bool getDisplayTheme();
+    
+    // 设置显示主题配置
+    bool setDisplayTheme(bool isLightTheme);
+    
     // 检查配置是否已加载
     bool isConfigLoaded();
 };

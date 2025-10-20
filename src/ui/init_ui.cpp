@@ -2,8 +2,9 @@
 #include <lvgl.h>
 #include <TFT_eSPI.h>
 #include "config/config.h"
+#include "config/config_manager.h"
 #include "lv_conf_internal.h"
-#include "../images/images.h"
+#include "images/images.h"
 #include "ui_utils.h"
 // 声明全局字体
 extern const lv_font_t lvgl_font_digital_24;
@@ -30,7 +31,8 @@ lv_obj_t* note_label = nullptr;
 static lv_disp_draw_buf_t draw_buf;
 static lv_color_t buf[screenWidth * 10];
 static lv_color_t buf2[screenHeight * 10];
-// TFT对象
+
+  // TFT对象
 TFT_eSPI tft = TFT_eSPI(screenWidth, screenHeight);
 // LVGL显示回调函数
 void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
@@ -48,7 +50,10 @@ void initDisplayDriver() {
   // 初始化显示屏
   tft.init();
   tft.setRotation(0); // 设置为正常方向（0度）
-  tft.fillScreen(TFT_BLACK);
+  
+  // 获取主题配置 - 强制使用亮色主题进行测试
+  bool isLightTheme = true; // 强制使用亮色主题
+  tft.fillScreen(isLightTheme ? TFT_WHITE : TFT_BLACK);
   // 初始化LVGL
   lv_init();
   // 配置显示缓冲区 - 使用双缓冲区
@@ -68,20 +73,23 @@ void initUI() {
   Serial.println("初始化UI元素...");
   // 初始化显示驱动
   initDisplayDriver();
+  // 获取主题配置 - 强制使用亮色主题进行测试
+  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme(); // 强制使用亮色主题
   // 设置背景颜色
-  lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x000000), 0);
+  lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(isLightTheme ? 0xFFFFFF : 0x000000), 0);
+  uint32_t defaultTextColor = isLightTheme ? 0x000000 : 0xFFFFFF;
   
-// 使用通用函数创建所有标签
-news_label =       createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 85,screenHeight-85,  lv_color_hex(0xdddddd));
-calendar_label =   createLabel(GBFont,     lv_color_hex(0xFFFFFF), 120, 240);
-today_date_label = createLabel(&lvgl_font_digital_108, lv_color_hex(0xFF0000),  0, 85, 0, lv_color_hex(0x000000), LV_OPA_TRANSP, false);
-iciba_label =      createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 85, screenHeight-85, lv_color_hex(0x3E92F2));
-astronauts_label = createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 85,screenHeight-85,  lv_color_hex(0x000080));
-mao_select_label = createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 220);  
-toxic_soul_label = createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 85, screenHeight-85, lv_color_hex(0xFFCF03));
-soul_label =       createLabel(GBFont,     lv_color_hex(0xFFFFFF),  0, 85,screenHeight-85,  lv_color_hex(0xE49E00));
+// 使用通用函数创建所有标签，createLabel函数会根据主题自动设置文字颜色
+news_label =       createLabel(GBFont,     lv_color_hex(defaultTextColor),  0, 85,screenHeight-85);
+calendar_label =   createLabel(GBFont,     lv_color_hex(defaultTextColor), 120, 240);
+today_date_label = createLabel(&lvgl_font_digital_108, lv_color_hex(isLightTheme ? 0x000000 : 0xFF0000),  0, 85, 0);
+iciba_label =      createLabel(GBFont,     lv_color_hex(defaultTextColor),  0, 85, screenHeight-85);
+astronauts_label = createLabel(GBFont,     lv_color_hex(defaultTextColor),  0, 85,screenHeight-85);
+mao_select_label = createLabel(GBFont,     lv_color_hex(defaultTextColor),  0, 220);  
+toxic_soul_label = createLabel(GBFont,     lv_color_hex(defaultTextColor),  0, 85, screenHeight-85);
+soul_label =       createLabel(GBFont,     lv_color_hex(defaultTextColor),  0, 85,screenHeight-85);
 // 创建留言板标签
-note_label =       createLabel(GBFont, lv_color_hex(0xFFFFFF),  0, 110);
+note_label =       createLabel(GBFont, lv_color_hex(defaultTextColor),  0, 110);
 
 // 使用通用函数创建所有图像
 calendar_img   = createImage(&calendar,  120, 120,   0, 360);

@@ -5,5 +5,8 @@
   },
   "ntp": {
     "timezone": 8
+  },
+  "display": {
+    "light_theme": false
   }
 }

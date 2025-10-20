@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include "config/config.h"
 #include "config/config_manager.h"
+#include "images/images.h"
 
 // 定义单例实例
 WebConfigServer* WebConfigServer::instance = nullptr;
@@ -134,7 +135,7 @@ void WebConfigServer::handleTheme() {
                 server.send(200, "text/html", errorHtml);
             }
         } else {
-            Serial.println("配置未加载，无法保存主题设置");
+              Serial.println("配置未加载，无法保存主题设置");
             String errorHtml = "";
             errorHtml += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>配置错误 - ESP32信息板</title>";
             errorHtml += "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>";
@@ -205,6 +206,10 @@ void WebConfigServer::init() {
     server.on("/screen-notes", HTTP_GET, std::bind(&WebConfigServer::handleNotesScreen, this));
     server.on("/screen-iciba", HTTP_GET, std::bind(&WebConfigServer::handleIcibaScreen, this));
     server.on("/screen-astronauts", HTTP_GET, std::bind(&WebConfigServer::handleAstronautsScreen, this));
+    // 添加随机内容页面的路由
+    server.on("/random-taxicsoul", HTTP_GET, std::bind(&WebConfigServer::handleRandomToxicSoul, this));
+    server.on("/random-maoselect", HTTP_GET, std::bind(&WebConfigServer::handleRandomMaoSelect, this));
+    server.on("/random-soul", HTTP_GET, std::bind(&WebConfigServer::handleRandomSoul, this));
     server.onNotFound(std::bind(&WebConfigServer::handleNotFound, this));
 }
 
@@ -272,6 +277,27 @@ void WebConfigServer::handleClient() {
 /**
  * 生成通用的屏幕页面模板
  */
+// 生成统一的版权信息
+String WebConfigServer::generateCopyrightInfo() {
+    String copyrightHtml = "";
+    copyrightHtml += "<footer class='mt-5 py-4 bg-light border-top'>";
+    copyrightHtml += "<div class='container'>";
+    copyrightHtml += "<div class='row'>";
+    copyrightHtml += "<div class='col-md-6'>";
+    copyrightHtml += "<p class='text-muted mb-2'><strong>ESP32桌面信息板</strong></p>";
+    copyrightHtml += "<p class='text-sm text-muted'>基于ESP32微控制器的多功能信息显示系统，支持实时数据展示、自动换屏、光线感应调节亮度和Web配置等功能。</p>";
+    copyrightHtml += "</div>";
+    copyrightHtml += "<div class='col-md-6 text-md-end'>";
+    copyrightHtml += "<p class='text-muted mb-2'>作者: wangkf /项目<a href='https://github.com/wangkf/Esp32DesktopInfoBoard' target='_blank'>GitHub地址</a></p>";
+    copyrightHtml += "<p class='text-muted mb-2'>邮箱：<a href='mailto:wangkf@qq.com'>wangkf@gmail.com</a></p>";
+    copyrightHtml += "<p class='text-muted'>业余无线电呼号：BI9ABS QTH：OM44kf</p>";
+    copyrightHtml += "</div>";
+    copyrightHtml += "</div>";
+    copyrightHtml += "</div>";
+    copyrightHtml += "</footer>";
+    return copyrightHtml;
+}
+
 String WebConfigServer::generateScreenPage(const String& screenName, const String& screenTitle, const String& content) {
     String html = "";
     html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>" + screenTitle + "</title>";
@@ -279,46 +305,61 @@ String WebConfigServer::generateScreenPage(const String& screenName, const Strin
     html += "<style>body { padding-top: 20px; background-color: #f8f9fa; } .container { max-width: 900px; } .navbar-brand { font-weight: bold; } .btn-primary { background-color: #4CAF50; border-color: #4CAF50; } .btn-primary:hover { background-color: #45a049; }</style>";
     html += "</head><body>";
     
-    // 统一导航栏样式 - 改为亮色主题
+    // 统一导航栏样式
     html += "<div class='container'>";
     html += "<nav class='navbar navbar-expand-lg bg-info shadow-sm mb-4'>";
     html += "  <div class='container-fluid'>";
-    html += "    <a class='navbar-brand text-success' href='/'>ESP32信息板</a>";
+    html += "    <a class='navbar-brand text-white' href='/'>ESP32信息板</a>";
     html += "    <button class='navbar-toggler' type='button' data-bs-toggle='collapse' data-bs-target='#navbarNav' aria-controls='navbarNav' aria-expanded='false' aria-label='Toggle navigation'>";
     html += "      <span class='navbar-toggler-icon'></span>";
     html += "    </button>";
     html += "    <div class='collapse navbar-collapse' id='navbarNav'>";
     html += "      <ul class='navbar-nav'>";
-      html += "        <li class='nav-item'><a class='nav-link text-white";
-      if (screenName == "") html += " active bg-primary font-weight-bold";
-      html += "' href='/'>首页</a></li>";
-      html += "        <li class='nav-item'><a class='nav-link text-white' href='/json-files'>JSON文件</a></li>";
-      
-      // 处理新闻导航项
-      html += "        <li class='nav-item'><a class='nav-link text-white";
-      if (screenName == "news") html += " active bg-primary font-weight-bold";
-      html += "' href='/screen-news'>新闻</a></li>";
-      
-      // 处理日历导航项
-      html += "        <li class='nav-item'><a class='nav-link text-white";
-      if (screenName == "calendar") html += " active bg-primary font-weight-bold";
-      html += "' href='/screen-calendar'>日历</a></li>";
-  
-      // 处理每日一句导航项
-      html += "        <li class='nav-item'><a class='nav-link text-white";
-      if (screenName == "iciba") html += " active bg-primary font-weight-bold";
-      html += "' href='/screen-iciba'>每日一句</a></li>";
-      
-      // 处理宇航员导航项
-      html += "        <li class='nav-item'><a class='nav-link text-white";
-      if (screenName == "astronauts") html += " active bg-primary font-weight-bold";
-      html += "' href='/screen-astronauts'>太空站宇航员</a></li>";
-      html += "      </ul>";
+    // 首页导航项
+    html += "        <li class='nav-item'><a class='nav-link text-white";
+    if (screenName == "") html += " active bg-primary font-weight-bold";
+    html += "' href='/'>首页</a></li>";
+    
+    // 数据管理导航项
+    html += "        <li class='nav-item'><a class='nav-link text-white";
+    if (screenName == "json-files") html += " active bg-primary font-weight-bold";
+    html += "' href='/json-files'>JSON文件</a></li>";   
+    // 信息展示导航项
+    html += "        <li class='nav-item'><a class='nav-link text-white";
+    if (screenName == "news") html += " active bg-primary font-weight-bold";
+    html += "' href='/screen-news'>新闻</a></li>";
+    
+    html += "        <li class='nav-item'><a class='nav-link text-white";
+    if (screenName == "calendar") html += " active bg-primary font-weight-bold";
+    html += "' href='/screen-calendar'>日历</a></li>";
+    
+    html += "        <li class='nav-item'><a class='nav-link text-white";
+    if (screenName == "iciba") html += " active bg-primary font-weight-bold";
+    html += "' href='/screen-iciba'>每日一句</a></li>";
+    
+    html += "        <li class='nav-item'><a class='nav-link text-white";
+    if (screenName == "astronauts") html += " active bg-primary font-weight-bold";
+    html += "' href='/screen-astronauts'>太空站宇航员</a></li>";
+    
+    // 随机内容导航项
+    html += "        <li class='nav-item'><a class='nav-link text-white";
+    if (screenName == "taxicsoul") html += " active bg-primary font-weight-bold";
+    html += "' href='/random-taxicsoul'>乌鸡汤</a></li>";
+    
+    html += "        <li class='nav-item'><a class='nav-link text-white";
+    if (screenName == "maoselect") html += " active bg-primary font-weight-bold";
+    html += "' href='/random-maoselect'>毛选</a></li>";
+    
+    html += "        <li class='nav-item'><a class='nav-link text-white";
+    if (screenName == "soul") html += " active bg-primary font-weight-bold";
+    html += "' href='/random-soul'>禅语</a></li>";
+    
+    html += "      </ul>";
     html += "    </div>";
     html += "  </div>";
     html += "</nav>";
     
-    // 内容区域 - 活泼的配色
+    // 内容区域
     html += "<div class='card mb-4 shadow-sm border-0 rounded-lg'>";
     html += "<div class='card-header bg-success text-white font-bold'>" + screenTitle + "</div>";
     html += "<div class='card-body bg-white'>";
@@ -327,26 +368,11 @@ String WebConfigServer::generateScreenPage(const String& screenName, const Strin
     html += "</div>";
     
     html += "<script src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js'></script>";
+    html += "</div>"; // 关闭外部container标签
     
-    // 底部版权信息
-    html += "<footer class='mt-5 py-3 bg-light border-top'>";
-    html += "<div class='container'>";
-    html += "<div class='row'>";
-    html += "<div class='col-md-6'>";
-    html += "<p class='text-muted'><strong>ESP32桌面信息板</strong></p>";
-    html += "<p class='text-sm text-muted'>基于ESP32微控制器的多功能信息显示系统，可实时展示热搜头条、日历、乌鸡汤、名言警句、金山词霸每日一句、国际空间站宇航员信息等内容，并支持自动换屏、光线感应调节亮度和Web配置等功能。</p>";
-    html += "</div>";
-    html += "<div class='col-md-6 text-md-end'>";
-    html += "<p class='text-muted'>作者:wangkf 邮箱：<a href='mailto:wangkf@qq.com'>wangkf@gmail.com</a></p>";
-    html += "<p class='text-muted'>业余无线电呼号：BI9ABS QTH：OM44kf</p>";
-    html += "<p class='text-muted'>邮箱：<a href='mailto:wangkf@qq.com'>wangkf@gmail.com</a></p>";
-    html += "<p class='text-muted'><a href='https://github.com/wangkf/Esp32DesktopInfoBoard' target='_blank'>GitHub项目地址</a></p>";
-    html += "</div>";
-    html += "</div>";
-    html += "</div>";
-    html += "</footer>";
+    // 调用统一的版权信息函数 - 移到container外部
+    html += generateCopyrightInfo();
     
-    html += "</div>";
     html += "</body></html>";
     return html;
 }
@@ -674,7 +700,7 @@ void WebConfigServer::handleRoot() {
     
     String ssid, password;
     int timezone;
-    
+
     // 读取当前的note内容
     String noteContent = "";
     File noteFile = SPIFFS.open("/note.json", "r");
@@ -688,152 +714,103 @@ void WebConfigServer::handleRoot() {
         }
     }
     
-    String html = "";
-    // 创建带Bootstrap的HTML页面
-    html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>ESP32信息板</title>";
-    html += "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
-    html += "<link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css\" rel=\"stylesheet\">";
-    html += "<style>body { padding-top: 20px; } .container { max-width: 900px; }</style>";
-    html += "</head><body>";
-    
-    // 添加导航栏
-    html += "<div class=\"container\">";
-    html += "<style>body { background-color: #f8f9fa; } .btn-primary { background-color: #4CAF50; border-color: #4CAF50; }</style>";
-    html += "<nav class=\"navbar navbar-expand-lg mb-4 shadow-lg bg-info\">";
-    html += "  <div class=\"container-fluid\">";
-    html += "    <a class=\"navbar-brand text-white font-weight-bold\" href=\"/\">ESP32信息板</a>";
-    html += "    <button class=\"navbar-toggler\" type=\"button\" data-bs-toggle=\"collapse\" data-bs-target=\"#navbarNav\" aria-controls=\"navbarNav\" aria-expanded=\"false\" aria-label=\"Toggle navigation\">";
-    html += "      <span class=\"navbar-toggler-icon bg-white\"></span>";
-    html += "    </button>";
-    html += "    <div class=\"collapse navbar-collapse\" id=\"navbarNav\">";
-    html += "      <ul class=\"navbar-nav\">";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link active text-white font-weight-bold\" href=\"/\">配置</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link text-white\" href=\"/json-files\">JSON文件</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link text-white\" href=\"/screen-news\">新闻</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link text-white\" href=\"/screen-calendar\">日历</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link text-white\" href=\"/screen-notes\">留言板</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link text-white\" href=\"/screen-iciba\">每日一句</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link text-white\" href=\"/screen-astronauts\">太空站宇航员</a></li>";
-    html += "      </ul>";
-    html += "    </div>";
-    html += "  </div>";
-    html += "</nav>";
-    
+    // 生成内容区域
+    String contentHtml = "";
     // 显示当前状态信息
-    html += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
-    html += "  <div class=\"card-header bg-success text-white\">系统状态</div>";
-    html += "  <div class=\"card-body\">";
+    contentHtml += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
+    contentHtml += "  <div class=\"card-header bg-success text-white\">系统状态</div>";
+    contentHtml += "  <div class=\"card-body\">";
     if (isAPMode) {
-        html += "    <p class=\"text-danger\">当前为配置模式 (AP模式)</p>";
-        html += "    <p>接入点IP: " + WiFi.softAPIP().toString() + "</p>";
+        contentHtml += "    <p class=\"text-danger\">当前为配置模式 (AP模式)</p>";
+        contentHtml += "    <p>接入点IP: " + WiFi.softAPIP().toString() + "</p>";
     } else {
-        html += "    <p class=\"text-success\">当前为联网模式 (STA模式)</p>";
-        html += "    <p>设备IP: " + WiFi.localIP().toString() + "</p>";
-        html += "    <p>WiFi信号强度: " + String(WiFi.RSSI()) + " dBm</p>";
+        contentHtml += "    <p class=\"text-success\">当前为联网模式 (STA模式)</p>";
+        contentHtml += "    <p>设备IP: " + WiFi.localIP().toString() + "</p>";
+        contentHtml += "    <p>WiFi信号强度: " + String(WiFi.RSSI()) + " dBm</p>";
     }
-    html += "    <p>软件版本: " SOFTWARE_VERSION "</p>";
-    html += "  </div>";
-    html += "</div>";
+    contentHtml += "    <p>软件版本: " SOFTWARE_VERSION "</p>";
+    contentHtml += "  </div>";
+    contentHtml += "</div>";
     
     if (isAPMode) {
         // 配置模式 - 显示完整配置页面
         readWiFiConfig(ssid, password);
         getNTPServerTimezone(timezone);
         
-        html += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
-        html += "  <div class=\"card-header bg-primary text-white\">网络配置</div>";
-        html += "  <div class=\"card-body\">";
-        html += "    <form action='/config' method='post'>";
-        html += "      <div class=\"mb-3\">";
-        html += "        <label for=\"ssid\" class=\"form-label\">WiFi名称</label>";
-        html += "        <input type=\"text\" class=\"form-control\" id=\"ssid\" name=\"ssid\" value='" + ssid + "'>";
-        html += "      </div>";
-        html += "      <div class=\"mb-3\">";
-        html += "        <label for=\"password\" class=\"form-label\">WiFi密码</label>";
-        html += "        <input type=\"password\" class=\"form-control\" id=\"password\" name=\"password\" value='" + password + "'>";
-        html += "      </div>";
-        html += "      <div class=\"mb-3\">";
-        html += "        <label for=\"timezone\" class=\"form-label\">NTP时区</label>";
-        html += "        <input type=\"number\" class=\"form-control\" id=\"timezone\" name=\"timezone\" value='" + String(timezone) + "' min='-12' max='14'>";
-        html += "        <div class=\"form-text\">整数，如北京时间为8</div>";
-        html += "      </div>";
+        contentHtml += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
+        contentHtml += "  <div class=\"card-header bg-primary text-white\">网络配置</div>";
+        contentHtml += "  <div class=\"card-body\">";
+        contentHtml += "    <form action='/config' method='post'>";
+        contentHtml += "      <div class=\"mb-3\">";
+        contentHtml += "        <label for=\"ssid\" class=\"form-label\">WiFi名称</label>";
+        contentHtml += "        <input type=\"text\" class=\"form-control\" id=\"ssid\" name=\"ssid\" value='" + ssid + "'>";
+        contentHtml += "      </div>";
+        contentHtml += "      <div class=\"mb-3\">";
+        contentHtml += "        <label for=\"password\" class=\"form-label\">WiFi密码</label>";
+        contentHtml += "        <input type=\"password\" class=\"form-control\" id=\"password\" name=\"password\" value='" + password + "'>";
+        contentHtml += "      </div>";
+        contentHtml += "      <div class=\"mb-3\">";
+        contentHtml += "        <label for=\"timezone\" class=\"form-label\">NTP时区</label>";
+        contentHtml += "        <input type=\"number\" class=\"form-control\" id=\"timezone\" name=\"timezone\" value='" + String(timezone) + "' min='-12' max='14'>";
+        contentHtml += "        <div class=\"form-text\">整数，如北京时间为8</div>";
+        contentHtml += "      </div>";
         
-
-        
-        html += "      <button type=\"submit\" class=\"btn btn-primary\">保存配置</button>";
-        html += "    </form>";
-        html += "  </div>";
-        html += "</div>";
+        contentHtml += "      <button type=\"submit\" class=\"btn btn-primary\">保存配置</button>";
+        contentHtml += "    </form>";
+        contentHtml += "  </div>";
+        contentHtml += "</div>";
         
         // 系统操作按钮
-        html += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
-        html += "  <div class=\"card-header bg-warning text-dark\">系统操作</div>";
-        html += "  <div class=\"card-body\">";
-        html += "    <form action='/restart' method='post'>";
-        html += "      <button type=\"submit\" class=\"btn btn-warning\">重启系统</button>";
-        html += "    </form>";
-        html += "  </div>";
-        html += "</div>";
+        contentHtml += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
+        contentHtml += "  <div class=\"card-header bg-warning text-dark\">系统操作</div>";
+        contentHtml += "  <div class=\"card-body\">";
+        contentHtml += "    <form action='/restart' method='post'>";
+        contentHtml += "      <button type=\"submit\" class=\"btn btn-warning\">重启系统</button>";
+        contentHtml += "    </form>";
+        contentHtml += "  </div>";
+        contentHtml += "</div>";
     }
     
     // 主题选择功能
-    html += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
-    html += "  <div  class=\"card-header bg-success text-white\">显示主题配置</div>";
-    html += "  <div class=\"card-body\">";
-    html += "    <form action='/theme' method='post'>";
-    html += "      <div class=\"mb-3\">";
-    html += "        <label for=\"theme\" class=\"form-label\">选择显示主题</label>";
-    html += "        <select class=\"form-control\" id=\"theme\" name=\"theme\">";
-    html += "          <option value=\"dark\"";
+    contentHtml += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
+    contentHtml += "  <div  class=\"card-header bg-success text-white\">显示主题配置</div>";
+    contentHtml += "  <div class=\"card-body\">";
+    contentHtml += "    <form action='/theme' method='post'>";
+    contentHtml += "      <div class=\"mb-3\">";
+    contentHtml += "        <label for=\"theme\" class=\"form-label\">选择显示主题</label>";
+    contentHtml += "        <select class=\"form-control\" id=\"theme\" name=\"theme\">";
+    contentHtml += "          <option value=\"dark\"";
     // 获取主题配置
     bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
-if (!isLightTheme) html += " selected";
-    html += ">黑夜主题</option>";
-    html += "          <option value=\"light\"";
-    if (isLightTheme) html += " selected";
-    html += ">白天主题</option>";
-    html += "        </select>";
-    html += "        <div class=\"form-text\">白天主题：白底黑字；黑夜主题：黑底白字</div>";
-    html += "      </div>";
-    html += "      <button type=\"submit\" class=\"btn btn-primary\">保存主题</button>";
-    html += "    </form>";
-    html += "  </div>";
-    html += "</div>";
+if (!isLightTheme) contentHtml += " selected";
+    contentHtml += ">黑夜主题</option>";
+    contentHtml += "          <option value=\"light\"";
+    if (isLightTheme) contentHtml += " selected";
+    contentHtml += ">白天主题</option>";
+    contentHtml += "        </select>";
+    contentHtml += "        <div class=\"form-text\">白天主题：白底黑字；黑夜主题：黑底白字</div>";
+    contentHtml += "      </div>";
+    contentHtml += "      <button type=\"submit\" class=\"btn btn-primary\">保存主题</button>";
+    contentHtml += "    </form>";
+    contentHtml += "  </div>";
+    contentHtml += "</div>";
     
     // 留言板功能
-    html += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
-    html += "  <div  class=\"card-header bg-success text-white\">留言板内容配置</div>";
-    html += "  <div class=\"card-body\">";
-    html += "    <form action='/note' method='post'>";
-    html += "      <div class=\"mb-3\">";
-    html += "        <label for=\"note\" class=\"form-label\">留言内容</label>";
-    html += "        <textarea class=\"form-control\" id=\"note\" name=\"note\" rows=\"6\">" + noteContent + "</textarea>";
-    html += "      </div>";
-    html += "      <button type=\"submit\" class=\"btn btn-secondary\">保存留言内容</button>";
-    html += "    </form>";
-    html += "  </div>";
-    html += "</div>";
+    contentHtml += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
+    contentHtml += "  <div  class=\"card-header bg-success text-white\">留言板内容配置</div>";
+    contentHtml += "  <div class=\"card-body\">";
+    contentHtml += "    <form action='/note' method='post'>";
+    contentHtml += "      <div class=\"mb-3\">";
+    contentHtml += "        <label for=\"note\" class=\"form-label\">留言内容</label>";
+    contentHtml += "        <textarea class=\"form-control\" id=\"note\" name=\"note\" rows=\"6\">" + noteContent + "</textarea>";
+    contentHtml += "      </div>";
+    contentHtml += "      <button type=\"submit\" class=\"btn btn-secondary\">保存留言内容</button>";
+    contentHtml += "    </form>";
+    contentHtml += "  </div>";
+    contentHtml += "</div>";
     
-    // 底部版权信息
-    html += "<footer class=\"text-center text-muted mt-5 pt-4 border-top\">";
-    html += "  <div class=\"container\">";
-    html += "    <div class=\"row\">";
-    html += "      <div class=\"col-md-6\">";
-    html += "        <h5 class=\"text-success\">ESP32桌面信息板</h5>";
-    html += "        <p>基于ESP32的多功能信息显示系统，支持名言警句等内容展示，以及自动换屏等功能。</p>";
-    html += "      </div>";
-    html += "      <div class=\"col-md-6\">";
-    html += "        <p>作者：wangkf</p>";
-    html += "        <p><a href=\"https://github.com/wangkf/Esp32DesktopInfoBoard\" class=\"text-success\">github.com/wangkf/Esp32DesktopInfoBoard</a></p>";
-    html += "      </div>";
-    html += "    </div>";
-    html += "  </div>";
-    html += "</footer>";
-    
-    html += "<script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js\"></script>";
-    html += "</div>";
-    html += "</body></html>";
-    
+    // 使用统一的generateScreenPage函数生成完整页面
+    String html = generateScreenPage("", "ESP32信息板", contentHtml);
     server.send(200, "text/html", html);
 }
 
@@ -1142,61 +1119,25 @@ void WebConfigServer::handleConfig() {
 void WebConfigServer::handleJsonFile() {
     String jsonFilesList = getJsonFilesList();
     
-    String html = "";
-    // 创建带Bootstrap的HTML页面
-    html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>JSON文件列表 - ESP32信息板</title>";
-    html += "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
-    html += "<link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css\" rel=\"stylesheet\">";
-    html += "<style>body { background-color: #f8f9fa; padding-top: 20px; } .container { max-width: 900px; } pre { background-color: #f8f9fa; } .card { border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-radius: 10px; }</style>";
-    html += "</head><body>";
+    // 生成内容区域
+    String contentHtml = "";
+    contentHtml += "<div class=\"card mb-4\">";
+    contentHtml += "  <div class=\"card-header bg-success text-white\">JSON文件列表</div>";
+    contentHtml += "  <div class=\"card-body\">";
+    contentHtml += "    <div class=\"list-group\">";
+    contentHtml += jsonFilesList;
+    contentHtml += "    </div>";
+    contentHtml += "  </div>";
+    contentHtml += "</div>";
     
-    // 添加导航栏（亮色主题）
-    html += "<div class=\"container\">";
-    html += "<nav class=\"navbar navbar-expand-lg bg-info mb-4\">";
-    html += "  <div class=\"container-fluid\">";
-    html += "    <a class=\"navbar-brand text-white\" href=\"/\">ESP32信息板</a>";
-    html += "    <button class=\"navbar-toggler\" type=\"button\" data-bs-toggle=\"collapse\" data-bs-target=\"#navbarNav\" aria-controls=\"navbarNav\" aria-expanded=\"false\" aria-label=\"Toggle navigation\">";
-    html += "      <span class=\"navbar-toggler-icon\"></span>";
-    html += "    </button>";
-    html += "    <div class=\"collapse navbar-collapse\" id=\"navbarNav\">";
-    html += "      <ul class=\"navbar-nav\">";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/\">配置</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-news\">新闻</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-calendar\">日历</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-notes\">留言板</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-iciba\">每日一句</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-astronauts\">太空站宇航员</a></li>";
-    html += "        <li class=\"nav-item\"><a class=\"nav-link text-success font-weight-bold\" href=\"/json-files\">JSON文件</a></li>";
-    html += "      </ul>";
-    html += "    </div>";
-    html += "  </div>";
-    html += "</nav>";
+    contentHtml += "<div class=\"card\">";
+    contentHtml += "  <div class=\"card-body text-center\">";
+    contentHtml += "    <a href=\"/\" class=\"btn btn-success\">返回首页</a>";
+    contentHtml += "  </div>";
+    contentHtml += "</div>";
     
-    html += "<div class=\"card mb-4\">";
-    html += "  <div class=\"card-header bg-success text-white\">JSON文件列表</div>";
-    html += "  <div class=\"card-body\">";
-    html += "    <div class=\"list-group\">";
-    html += jsonFilesList;
-    html += "    </div>";
-    html += "  </div>";
-    html += "</div>";
-    
-    html += "<div class=\"card\">";
-    html += "  <div class=\"card-body text-center\">";
-    html += "    <a href=\"/\" class=\"btn btn-success\">返回首页</a>";
-    html += "  </div>";
-    html += "</div>";
-    
-    // 底部版权信息
-    html += "<footer class=\"text-center text-muted mt-4\">";
-    html += "  <p>ESP32桌面信息板 - 基于ESP32的多功能信息显示系统</p>";
-    html += "  <p><a href=\"https://github.com/wangkf/Esp32DesktopInfoBoard\" class=\"text-success\">github.com/wangkf/Esp32DesktopInfoBoard</a></p>";
-    html += "</footer>";
-    
-    html += "<script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js\"></script>";
-    html += "</div>";
-    html += "</body></html>";
-    
+    // 使用统一的generateScreenPage函数生成完整页面
+    String html = generateScreenPage("json-files", "JSON文件列表 - ESP32信息板", contentHtml);
     server.send(200, "text/html", html);
 }
 
@@ -1448,6 +1389,110 @@ String WebConfigServer::readJsonFileContent(const String& fileName) {
         }
         return content;
     }
+}
+
+
+
+// 外部声明，避免重复定义
+extern const char* MaoSelect[];
+extern const char* Soul[];
+extern const char* ToxicSoul[];
+extern const int MaoSelectCount;
+// Soul和ToxicSoul数组的大小常量
+const int SOUL_COUNT = 108;
+const int TOXIC_SOUL_COUNT = 108;
+
+/**
+ * 处理随机乌鸡汤内容页面请求
+ */
+void WebConfigServer::handleRandomToxicSoul() {
+    // 生成随机索引
+    randomSeed(millis());
+    int randomIndex = random(TOXIC_SOUL_COUNT);
+    
+    // 获取随机内容
+    String content = ToxicSoul[randomIndex];
+    
+    // 生成内容区域
+    String contentHtml = "<div class='quote-box p-5 bg-light rounded border border-warning text-center'>";
+    
+    // 将换行符替换为HTML换行标签
+    content.replace("\n", "<br>");
+    contentHtml += "  <p class='fs-4 text-gray-800 mb-0'>" + content + "</p>";
+    
+    contentHtml += "</div>";
+    contentHtml += "<div class='text-center mt-4'>";
+    contentHtml += "  <a href='/random-taxicsoul' class='btn btn-warning'>再看一条乌鸡汤</a>";
+    contentHtml += "  <a href='/random-maoselect' class='btn btn-outline-secondary ms-2'>查看毛选</a>";
+    contentHtml += "  <a href='/random-soul' class='btn btn-outline-secondary ms-2'>查看禅语</a>";
+    contentHtml += "</div>";
+    
+    // 生成完整页面
+    String html = generateScreenPage("taxicsoul", "随机乌鸡汤", contentHtml);
+    
+    server.send(200, "text/html", html);
+}
+
+/**
+ * 处理随机毛选内容页面请求
+ */
+void WebConfigServer::handleRandomMaoSelect() {
+    // 生成随机索引
+    randomSeed(millis());
+    int randomIndex = random(MaoSelectCount);
+    
+    // 获取随机内容
+    String content = MaoSelect[randomIndex];
+    
+    // 生成内容区域
+    String contentHtml = "<div class='quote-box p-5 bg-light rounded border border-danger text-center'>";
+    
+    // 将换行符替换为HTML换行标签
+    content.replace("\n", "<br>");
+    contentHtml += "  <p class='fs-4 text-gray-800 mb-0'>" + content + "</p>";
+    
+    contentHtml += "</div>";
+    contentHtml += "<div class='text-center mt-4'>";
+    contentHtml += "  <a href='/random-maoselect' class='btn btn-danger'>再看一条毛选</a>";
+    contentHtml += "  <a href='/random-taxicsoul' class='btn btn-outline-secondary ms-2'>查看乌鸡汤</a>";
+    contentHtml += "  <a href='/random-soul' class='btn btn-outline-secondary ms-2'>查看禅语</a>";
+    contentHtml += "</div>";
+    
+    // 生成完整页面
+    String html = generateScreenPage("maoselect", "随机毛选内容", contentHtml);
+    
+    server.send(200, "text/html", html);
+}
+
+/**
+ * 处理随机禅语内容页面请求
+ */
+void WebConfigServer::handleRandomSoul() {
+    // 生成随机索引
+    randomSeed(millis());
+    int randomIndex = random(SOUL_COUNT);
+    
+    // 获取随机内容
+    String content = Soul[randomIndex];
+    
+    // 生成内容区域
+    String contentHtml = "<div class='quote-box p-5 bg-light rounded border border-info text-center'>";
+    
+    // 将换行符替换为HTML换行标签
+    content.replace("\n", "<br>");
+    contentHtml += "  <p class='fs-4 text-gray-800 mb-0'>" + content + "</p>";
+    
+    contentHtml += "</div>";
+    contentHtml += "<div class='text-center mt-4'>";
+    contentHtml += "  <a href='/random-soul' class='btn btn-info'>再看一条禅语</a>";
+    contentHtml += "  <a href='/random-taxicsoul' class='btn btn-outline-secondary ms-2'>查看乌鸡汤</a>";
+    contentHtml += "  <a href='/random-maoselect' class='btn btn-outline-secondary ms-2'>查看毛选</a>";
+    contentHtml += "</div>";
+    
+    // 生成完整页面
+    String html = generateScreenPage("soul", "随机禅语内容", contentHtml);
+    
+    server.send(200, "text/html", html);
 }
 
 

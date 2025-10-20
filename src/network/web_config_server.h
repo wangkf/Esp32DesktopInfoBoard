@@ -92,6 +92,9 @@ public:
     // 生成通用的屏幕页面模板
     String generateScreenPage(const String& screenName, const String& screenTitle, const String& content);
     
+    // 生成统一的版权信息
+    String generateCopyrightInfo();
+    
     // 生成月历表格
     String generateMonthCalendar(int year, int month);
     
@@ -101,6 +104,11 @@ public:
     void handleNotesScreen();
     void handleIcibaScreen();
     void handleAstronautsScreen();
+    
+    // 处理随机内容页面请求
+    void handleRandomToxicSoul();
+    void handleRandomMaoSelect();
+    void handleRandomSoul();
 };
 
 #endif // WEB_CONFIG_SERVER_H

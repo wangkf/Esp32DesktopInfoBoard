@@ -7,7 +7,7 @@
 extern const lv_font_t lvgl_font_yahei_16;
 #define GBFont &lvgl_font_yahei_16
 // 软件版本定义
-#define SOFTWARE_VERSION "0.1.3"
+#define SOFTWARE_VERSION "0.1.4"
 // NTP服务器配置
 #define NTP_SERVER     "ntp.aliyun.com"
 // 屏幕状态枚举

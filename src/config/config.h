@@ -6,7 +6,7 @@
 // 字体定义 - 方便后续更换字体
 #define GBFont &lvgl_font_song_16
 // 软件版本定义
-#define SOFTWARE_VERSION "0.1.2"
+#define SOFTWARE_VERSION "0.1.3"
 // NTP服务器配置
 #define NTP_SERVER     "ntp.aliyun.com"
 // 屏幕状态枚举

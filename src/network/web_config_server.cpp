@@ -49,11 +49,17 @@ WebConfigServer* WebConfigServer::getInstance() {
 void WebConfigServer::init() {
     // 注册处理函数
     server.on("/", HTTP_GET, std::bind(&WebConfigServer::handleRoot, this));
-    server.on("/config", HTTP_POST, std::bind(&WebConfigServer::handleConfig, this));    server.on("/restart", HTTP_POST, std::bind(&WebConfigServer::handleRestart, this));
+    server.on("/config", HTTP_POST, std::bind(&WebConfigServer::handleConfig, this));
     server.on("/restart", HTTP_POST, std::bind(&WebConfigServer::handleRestart, this));
     server.on("/json-files", HTTP_GET, std::bind(&WebConfigServer::handleJsonFile, this));
     server.on("/json-file", HTTP_GET, std::bind(&WebConfigServer::handleJsonFileContent, this));
     server.on("/note", HTTP_POST, std::bind(&WebConfigServer::handleNote, this));
+    // 添加各屏幕页面的路由
+    server.on("/screen-news", HTTP_GET, std::bind(&WebConfigServer::handleNewsScreen, this));
+    server.on("/screen-calendar", HTTP_GET, std::bind(&WebConfigServer::handleCalendarScreen, this));
+    server.on("/screen-notes", HTTP_GET, std::bind(&WebConfigServer::handleNotesScreen, this));
+    server.on("/screen-iciba", HTTP_GET, std::bind(&WebConfigServer::handleIcibaScreen, this));
+    server.on("/screen-astronauts", HTTP_GET, std::bind(&WebConfigServer::handleAstronautsScreen, this));
     server.onNotFound(std::bind(&WebConfigServer::handleNotFound, this));
 }
 
@@ -119,6 +125,376 @@ void WebConfigServer::handleClient() {
 }
 
 /**
+ * 生成通用的屏幕页面模板
+ */
+String WebConfigServer::generateScreenPage(const String& screenName, const String& screenTitle, const String& content) {
+    String html = "";
+    html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>" + screenTitle + "</title>";
+    html += "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>";
+    html += "<style>body { padding-top: 20px; } .container { max-width: 900px; }</style>";
+    html += "</head><body>";
+    
+    // 统一导航栏样式
+    html += "<div class='container'>";
+    html += "<nav class='navbar navbar-expand-lg navbar-dark bg-dark mb-4'>";
+    html += "  <div class='container-fluid'>";
+    html += "    <a class='navbar-brand' href='/'>ESP32信息板</a>";
+    html += "    <button class='navbar-toggler' type='button' data-bs-toggle='collapse' data-bs-target='#navbarNav' aria-controls='navbarNav' aria-expanded='false' aria-label='Toggle navigation'>";
+    html += "      <span class='navbar-toggler-icon'></span>";
+    html += "    </button>";
+    html += "    <div class='collapse navbar-collapse' id='navbarNav'>";
+    html += "      <ul class='navbar-nav'>";
+    html += "        <li class='nav-item'><a class='nav-link";
+    if (screenName == "") html += " active";
+    html += "' href='/'>首页</a></li>";
+    html += "        <li class='nav-item'><a class='nav-link' href='/json-files'>JSON文件</a></li>";
+    
+    // 处理新闻导航项
+    html += "        <li class='nav-item'><a class='nav-link";
+    if (screenName == "news") html += " active";
+    html += "' href='/screen-news'>新闻</a></li>";
+    
+    // 处理日历导航项
+    html += "        <li class='nav-item'><a class='nav-link";
+    if (screenName == "calendar") html += " active";
+    html += "' href='/screen-calendar'>日历</a></li>";
+
+    // 处理每日一句导航项
+    html += "        <li class='nav-item'><a class='nav-link";
+    if (screenName == "iciba") html += " active";
+    html += "' href='/screen-iciba'>每日一句</a></li>";
+    
+    // 处理宇航员导航项
+    html += "        <li class='nav-item'><a class='nav-link";
+    if (screenName == "astronauts") html += " active";
+    html += "' href='/screen-astronauts'>太空站宇航员</a></li>";
+    html += "      </ul>";
+    html += "    </div>";
+    html += "  </div>";
+    html += "</nav>";
+    
+    // 内容区域
+    html += "<div class='card mb-4'>";
+    html += "<div class='card-header bg-info text-white'>" + screenTitle + "</div>";
+    html += "<div class='card-body'>";
+    html += content;
+    html += "</div>";
+    html += "</div>";
+    
+    html += "<script src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js'></script>";
+    html += "</div>";
+    html += "</body></html>";
+    return html;
+}
+
+/**
+ * 处理新闻屏幕页面
+ */
+void WebConfigServer::handleNewsScreen() {
+    String content = "<div class='alert alert-info'>新闻内容将在这里显示</div>";
+    
+    // 尝试读取新闻数据文件，尝试多种可能的文件名
+    File file = SPIFFS.open("/news.json", "r");
+    if (!file) {
+        file = SPIFFS.open("/data/news.json", "r");
+    }
+    
+    if (file) {
+        DynamicJsonDocument doc(8192);
+        DeserializationError error = deserializeJson(doc, file);
+        file.close();
+        
+        if (!error) {
+            content = "<div class='news-container'>";
+            
+            // 检查是否有result数组
+            if (doc.containsKey("result") && doc["result"].is<JsonArray>()) {
+                JsonArray results = doc["result"].as<JsonArray>();
+                
+                for (size_t i = 0; i < results.size(); i++) {
+                    content += "<div class='card mb-3'>";
+                    content += "<div class='card-body'>";
+                    
+                    // 直接显示result条目的内容
+                    JsonVariant result = results[i];
+                    if (result.is<JsonObject>()) {
+                        JsonObject obj = result.as<JsonObject>();
+                        // 遍历所有键值对并显示
+                        for (JsonPair kv : obj) {
+                            content += "<p class='card-text'><strong>" + String(kv.key().c_str()) + ":</strong> " + String(kv.value().as<String>()) + "</p>";
+                        }
+                    } else if (result.is<String>()) {
+                        // 如果是字符串，直接显示
+                        content += "<p class='card-text'>" + result.as<String>() + "</p>";
+                    } else {
+                        // 其他类型，转换为字符串显示
+                        content += "<p class='card-text'>" + String(result.as<String>()) + "</p>";
+                    }
+                    
+                    content += "</div></div>";
+                }
+            } else {
+                content = "<div class='alert alert-warning'>新闻数据格式不正确，未找到result数组</div>";
+            }
+            
+            content += "</div>";
+        } else {
+            content = "<div class='alert alert-danger'>JSON解析失败: " + String(error.c_str()) + "</div>";
+        }
+    } else {
+        content = "<div class='alert alert-danger'>无法打开新闻数据文件</div>";
+    }
+    
+    String html = generateScreenPage("news", "新闻屏幕", content);
+    server.send(200, "text/html", html);
+}
+
+/**
+ * 处理日历屏幕页面
+ */
+void WebConfigServer::handleCalendarScreen() {
+    String content = "";
+    
+    // 获取当前日期时间
+    time_t now;
+    struct tm timeinfo;
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    
+    // 格式化显示当前日期
+    char buffer[32];
+    strftime(buffer, sizeof(buffer), "%Y年%m月%d日 %A", &timeinfo);
+    String currentDateStr = buffer;
+    int currentDay = timeinfo.tm_mday;
+    
+    // 显示大字号的日期数字
+    content += "<div class='text-center mb-5'>";
+    content += "<h1 class='display-1'>" + String(currentDay) + "</h1>";
+    content += "<p class='lead'>" + currentDateStr + "</p>";
+    content += "</div>";
+    
+    // 生成月历表格
+    content += generateMonthCalendar(timeinfo.tm_year, timeinfo.tm_mon);
+    
+    String html = generateScreenPage("calendar", "日历屏幕", content);
+    server.send(200, "text/html", html);
+}
+
+/**
+ * 生成月历表格
+ */
+String WebConfigServer::generateMonthCalendar(int year, int month) {
+    String calendar = "<div class='calendar-container mx-auto' style='max-width: 400px;'>";
+    
+    // 月份名称
+    const char* monthNames[] = {"一月", "二月", "三月", "四月", "五月", "六月", 
+                                "七月", "八月", "九月", "十月", "十一月", "十二月"};
+    
+    calendar += "<h3 class='text-center mb-3'>" + String(year + 1900) + "年 " + monthNames[month] + "</h3>";
+    
+    // 星期标题行
+    calendar += "<table class='table table-bordered text-center'>";
+    calendar += "<thead><tr class='bg-info text-white'>";
+    calendar += "<th>日</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th>";
+    calendar += "</tr></thead><tbody>";
+    
+    // 计算该月第一天是星期几
+    struct tm firstDay;
+    firstDay.tm_year = year;
+    firstDay.tm_mon = month;
+    firstDay.tm_mday = 1;
+    firstDay.tm_hour = 0;
+    firstDay.tm_min = 0;
+    firstDay.tm_sec = 0;
+    mktime(&firstDay);
+    
+    // 获取该月的天数
+    int daysInMonth;
+    if (month == 1) { // 二月
+        // 判断闰年
+        bool isLeapYear = (year + 1900) % 4 == 0 && ((year + 1900) % 100 != 0 || (year + 1900) % 400 == 0);
+        daysInMonth = isLeapYear ? 29 : 28;
+    } else if (month == 3 || month == 5 || month == 8 || month == 10) {
+        daysInMonth = 30;
+    } else {
+        daysInMonth = 31;
+    }
+    
+    // 生成日历单元格
+    int day = 1;
+    int currentDayOfWeek = firstDay.tm_wday;
+    
+    // 填充第一行之前的空白
+    calendar += "<tr>";
+    for (int i = 0; i < currentDayOfWeek; i++) {
+        calendar += "<td>&nbsp;</td>";
+    }
+    
+    // 填充日期
+    while (day <= daysInMonth) {
+        // 标记今天
+        time_t now;
+        struct tm timeinfo;
+        time(&now);
+        localtime_r(&now, &timeinfo);
+        String dayClass = "";
+        if (year == timeinfo.tm_year && month == timeinfo.tm_mon && day == timeinfo.tm_mday) {
+            dayClass = "bg-primary text-white font-weight-bold";
+        }
+        
+        calendar += "<td class='" + dayClass + "'>" + String(day) + "</td>";
+        
+        if (currentDayOfWeek == 6 && day < daysInMonth) { // 星期六且不是最后一天，换行
+            calendar += "</tr><tr>";
+            currentDayOfWeek = 0;
+        } else {
+            currentDayOfWeek++;
+        }
+        
+        day++;
+    }
+    
+    // 填充最后一行剩余的空白
+    while (currentDayOfWeek < 7 && currentDayOfWeek > 0) {
+        calendar += "<td>&nbsp;</td>";
+        currentDayOfWeek++;
+    }
+    
+    calendar += "</tr></tbody></table>";
+    calendar += "</div>";
+    
+    return calendar;
+}
+
+/**
+ * 处理留言板屏幕页面 - 重定向到首页，因为首页已有留言板配置
+ */
+void WebConfigServer::handleNotesScreen() {
+    server.sendHeader("Location", "/", true);
+    server.send(302, "text/plain", "");
+}
+
+/**
+ * 处理每日一句屏幕页面
+ */
+void WebConfigServer::handleIcibaScreen() {
+    String content = "<div class='alert alert-info'>每日一句内容将在这里显示</div>";
+    
+    // 尝试读取每日一句数据文件，尝试多种可能的文件名
+    File file = SPIFFS.open("/iciba.json", "r");
+    if (!file) {
+        file = SPIFFS.open("/data/iciba.json", "r");
+    }
+    
+    if (file) {
+        DynamicJsonDocument doc(8192);
+        DeserializationError error = deserializeJson(doc, file);
+        file.close();
+        
+        if (!error) {
+            content = "<div class='iciba-container card p-4'>";
+            
+            // 显示content
+            if (doc.containsKey("content")) {
+                content += "<p class='lead mb-2'>" + doc["content"].as<String>() + "</p>";
+            }
+            
+            // 显示note
+            if (doc.containsKey("note")) {
+                content += "<p class='mb-3 text-muted'>" + doc["note"].as<String>() + "</p>";
+            }
+            
+            // 显示fenxiang_img
+            if (doc.containsKey("fenxiang_img")) {
+                String imgUrl = doc["fenxiang_img"].as<String>();
+                content += "<div class='mb-3 text-center'>";
+                content += "<img src='" + imgUrl + "' class='img-fluid rounded' alt='每日一句图片'>";
+                content += "</div>";
+            }
+            
+            // 显示tts播放按钮
+            if (doc.containsKey("tts")) {
+                String ttsUrl = doc["tts"].as<String>();
+                content += "<div class='mb-3'>";
+                content += "<audio controls>";
+                content += "<source src='" + ttsUrl + "' type='audio/mpeg'>";
+                content += "您的浏览器不支持音频元素。";
+                content += "</audio>";
+                content += "</div>";
+            }
+            
+            // 显示last_updated
+            if (doc.containsKey("last_updated")) {
+                content += "<p class='text-sm text-muted'>更新时间: " + doc["last_updated"].as<String>() + "</p>";
+            }
+            
+            content += "</div>";
+        } else {
+            content = "<div class='alert alert-danger'>JSON解析失败: " + String(error.c_str()) + "</div>";
+        }
+    } else {
+        content = "<div class='alert alert-danger'>无法打开每日一句数据文件</div>";
+    }
+    
+    String html = generateScreenPage("iciba", "每日一句屏幕", content);
+    server.send(200, "text/html", html);
+}
+
+/**
+ * 处理太空站宇航员屏幕页面
+ */
+void WebConfigServer::handleAstronautsScreen() {
+    String content = "<div class='alert alert-info'>太空站宇航员内容将在这里显示</div>";
+    
+    // 尝试读取宇航员数据文件，尝试多种可能的文件名
+    File file = SPIFFS.open("/astronauts.json", "r");
+    if (!file) {
+        file = SPIFFS.open("/data/astronauts.json", "r");
+    }
+    
+    if (file) {
+        DynamicJsonDocument doc(8192);
+        DeserializationError error = deserializeJson(doc, file);
+        file.close();
+        
+        if (!error) {
+            content = "<div class='astronauts-container'>";
+            
+            int astronautCount = 0;
+            
+            // 计算宇航员数量并显示
+            if (doc.containsKey("people") && doc["people"].is<JsonArray>()) {
+                JsonArray people = doc["people"].as<JsonArray>();
+                astronautCount = people.size();
+                
+                content += "<p class='lead mb-4'>太空目前有 <strong>" + String(astronautCount) + "</strong> 名宇航员</p>";
+                
+                // 按要求格式显示每个宇航员信息
+                content += "<div class='list-group'>";
+                for (JsonObject person : people) {
+                    String name = person.containsKey("name") ? person["name"].as<String>() : "未知";
+                    String craft = person.containsKey("craft") ? person["craft"].as<String>() : "未知";
+                    
+                    content += "<div class='list-group-item'>" + craft + ": " + name + "</div>";
+                }
+                content += "</div>";
+            } else {
+                content = "<div class='alert alert-warning'>宇航员数据格式不正确，未找到people数组</div>";
+            }
+            
+            content += "</div>";
+        } else {
+            content = "<div class='alert alert-danger'>JSON解析失败: " + String(error.c_str()) + "</div>";
+        }
+    } else {
+        content = "<div class='alert alert-danger'>无法打开宇航员数据文件</div>";
+    }
+    
+    String html = generateScreenPage("astronauts", "太空站宇航员屏幕", content);
+    server.send(200, "text/html", html);
+}
+
+/**
  * 检查服务器是否正在运行
  */
 bool WebConfigServer::isServerRunning() {
@@ -149,66 +525,105 @@ void WebConfigServer::handleRoot() {
     }
     
     String html = "";
+    // 创建带Bootstrap的HTML页面
+    html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>ESP32信息板</title>";
+    html += "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
+    html += "<link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css\" rel=\"stylesheet\">";
+    html += "<style>body { padding-top: 20px; } .container { max-width: 900px; }</style>";
+    html += "</head><body>";
+    
+    // 添加导航栏
+    html += "<div class=\"container\">";
+    html += "<nav class=\"navbar navbar-expand-lg navbar-dark bg-dark mb-4\">";
+    html += "  <div class=\"container-fluid\">";
+    html += "    <a class=\"navbar-brand\" href=\"/\">ESP32信息板</a>";
+    html += "    <button class=\"navbar-toggler\" type=\"button\" data-bs-toggle=\"collapse\" data-bs-target=\"#navbarNav\" aria-controls=\"navbarNav\" aria-expanded=\"false\" aria-label=\"Toggle navigation\">";
+    html += "      <span class=\"navbar-toggler-icon\"></span>";
+    html += "    </button>";
+    html += "    <div class=\"collapse navbar-collapse\" id=\"navbarNav\">";
+    html += "      <ul class=\"navbar-nav\">";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link active\" href=\"/\">配置</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/json-files\">JSON文件</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-news\">新闻</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-calendar\">日历</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-notes\">留言板</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-iciba\">每日一句</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-astronauts\">太空站宇航员</a></li>";
+    html += "      </ul>";
+    html += "    </div>";
+    html += "  </div>";
+    html += "</nav>";
+    
+    // 显示当前状态信息
+    html += "<div class=\"card mb-4\">";
+    html += "  <div class=\"card-header bg-info text-white\">系统状态</div>";
+    html += "  <div class=\"card-body\">";
+    if (isAPMode) {
+        html += "    <p class=\"text-danger\">当前为配置模式 (AP模式)</p>";
+        html += "    <p>接入点IP: " + WiFi.softAPIP().toString() + "</p>";
+    } else {
+        html += "    <p class=\"text-success\">当前为联网模式 (STA模式)</p>";
+        html += "    <p>设备IP: " + WiFi.localIP().toString() + "</p>";
+        html += "    <p>WiFi信号强度: " + String(WiFi.RSSI()) + " dBm</p>";
+    }
+    html += "    <p>软件版本: " SOFTWARE_VERSION "</p>";
+    html += "  </div>";
+    html += "</div>";
     
     if (isAPMode) {
         // 配置模式 - 显示完整配置页面
         readWiFiConfig(ssid, password);
         getNTPServerTimezone(timezone);
         
-        html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>ESP32信息板配置</title>",
-               "<style>body{font-family:Arial,sans-serif;margin:20px;}",
-               "h1{color:#333;}",
-               "form{max-width:400px;margin:20px 0;}",
-               "input[type=text],input[type=password],input[type=number]{width:100%;padding:10px;margin:8px 0;display:inline-block;",
-               "border:1px solid #ccc;border-radius:4px;box-sizing:border-box;}",
-               "textarea{width:100%;height:200px;padding:10px;margin:8px 0;display:inline-block;",
-               "border:1px solid #ccc;border-radius:4px;box-sizing:border-box;resize:vertical;}",
-               "input[type=submit]{background-color:#4CAF50;color:white;padding:14px 20px;margin:8px 0;border:none;",
-               "border-radius:4px;cursor:pointer;}",
-               "input[type=submit]:hover{background-color:#45a049;}",
-               "a{color:#0066cc;}</style></head><body>";
+        html += "<div class=\"card mb-4\">";
+        html += "  <div class=\"card-header bg-primary text-white\">网络配置</div>";
+        html += "  <div class=\"card-body\">";
+        html += "    <form action='/config' method='post'>";
+        html += "      <div class=\"mb-3\">";
+        html += "        <label for=\"ssid\" class=\"form-label\">WiFi名称</label>";
+        html += "        <input type=\"text\" class=\"form-control\" id=\"ssid\" name=\"ssid\" value='" + ssid + "'>";
+        html += "      </div>";
+        html += "      <div class=\"mb-3\">";
+        html += "        <label for=\"password\" class=\"form-label\">WiFi密码</label>";
+        html += "        <input type=\"password\" class=\"form-control\" id=\"password\" name=\"password\" value='" + password + "'>";
+        html += "      </div>";
+        html += "      <div class=\"mb-3\">";
+        html += "        <label for=\"timezone\" class=\"form-label\">NTP时区</label>";
+        html += "        <input type=\"number\" class=\"form-control\" id=\"timezone\" name=\"timezone\" value='" + String(timezone) + "' min='-12' max='14'>";
+        html += "        <div class=\"form-text\">整数，如北京时间为8</div>";
+        html += "      </div>";
+        html += "      <button type=\"submit\" class=\"btn btn-primary\">保存配置</button>";
+        html += "    </form>";
+        html += "  </div>";
+        html += "</div>";
         
-        html += "<h1>ESP32信息板配置</h1>";
-        
-        // 合并后的配置表单
-        html += "<form action='/config' method='post'>";
-        html += "WiFi名称: <input type='text' name='ssid' value='" + ssid + "'><br>";
-        html += "WiFi密码: <input type='password' name='password' value='" + password + "'><br>";
-        html += "NTP时区: <input type='number' name='timezone' value='" + String(timezone) + "'>(整数，如北京时间为8)<br>";
-        html += "<input type='submit' value='保存配置'>";
-        html += "</form>";
-        
-        // 添加重启系统按钮
-        html += "<form action='/restart' method='post'>";
-        html += "<input type='submit' value='重启系统'>";
-        html += "</form>";
-        
-        html += "<h2>JSON文件查看</h2>";
-        html += "<p><a href='/json-files'>查看所有JSON文件</a></p>";
-    } else {
-        // 普通模式（已联网）- 显示简化页面
-        html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>ESP32信息板</title>",
-               "<style>body{font-family:Arial,sans-serif;margin:20px;}",
-               "h1{color:#333;}",
-               "form{max-width:400px;margin:20px 0;}",
-               "textarea{width:100%;height:200px;padding:10px;margin:8px 0;display:inline-block;",
-               "border:1px solid #ccc;border-radius:4px;box-sizing:border-box;resize:vertical;}",
-               "input[type=submit]{background-color:#4CAF50;color:white;padding:14px 20px;margin:8px 0;border:none;",
-               "border-radius:4px;cursor:pointer;}",
-               "input[type=submit]:hover{background-color:#45a049;}",
-               "a{color:#0066cc;}</style></head><body>";
-        
-        html += "<h1>ESP32信息板</h1>";
-        html += "<p>设备已成功连接网络，当前IP地址: " + WiFi.localIP().toString() + "</p>";
+        // 系统操作按钮
+        html += "<div class=\"card mb-4\">";
+        html += "  <div class=\"card-header bg-warning text-dark\">系统操作</div>";
+        html += "  <div class=\"card-body\">";
+        html += "    <form action='/restart' method='post'>";
+        html += "      <button type=\"submit\" class=\"btn btn-warning\">重启系统</button>";
+        html += "    </form>";
+        html += "  </div>";
+        html += "</div>";
     }
     
-    // 两种模式都显示留言板功能
-    html += "<h2>留言板内容配置</h2>";
-    html += "<form action='/note' method='post'>";
-    html += "留言内容: <br/><textarea name='note'>" + noteContent + "</textarea><br>";
-    html += "<input type='submit' value='保存留言内容'>";
-    html += "</form>";
+    // 留言板功能
+    html += "<div class=\"card mb-4\">";
+    html += "  <div class=\"card-header bg-secondary text-white\">留言板内容配置</div>";
+    html += "  <div class=\"card-body\">";
+    html += "    <form action='/note' method='post'>";
+    html += "      <div class=\"mb-3\">";
+    html += "        <label for=\"note\" class=\"form-label\">留言内容</label>";
+    html += "        <textarea class=\"form-control\" id=\"note\" name=\"note\" rows=\"6\">" + noteContent + "</textarea>";
+    html += "      </div>";
+    html += "      <button type=\"submit\" class=\"btn btn-secondary\">保存留言内容</button>";
+    html += "    </form>";
+    html += "  </div>";
+    html += "</div>";
     
+    html += "<script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js\"></script>";
+    html += "</div>";
     html += "</body></html>";
     
     server.send(200, "text/html", html);
@@ -282,20 +697,52 @@ void WebConfigServer::handleJsonFile() {
     String jsonFilesList = getJsonFilesList();
     
     String html = "";
-    html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>JSON文件列表</title>";
-    html += "<style>body{font-family:Arial,sans-serif;margin:20px;}";
-    html += "h1{color:#333;}";
-    html += "ul{list-style-type:none;padding:0;}";
-    html += "li{margin:10px 0;padding:10px;background-color:#f1f1f1;border-radius:4px;}";
-    html += "a{color:#0066cc;text-decoration:none;}";
-    html += "a:hover{text-decoration:underline;}";
-    html += "pre{background-color:#eee;padding:10px;border-radius:4px;overflow-x:auto;}";
-    html += "button{background-color:#4CAF50;color:white;padding:8px 12px;border:none;border-radius:4px;cursor:pointer;}</style></head><body>";
+    // 创建带Bootstrap的HTML页面
+    html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>JSON文件列表 - ESP32信息板</title>";
+    html += "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
+    html += "<link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css\" rel=\"stylesheet\">";
+    html += "<style>body { padding-top: 20px; } .container { max-width: 900px; } pre { background-color: #f8f9fa; }</style>";
+    html += "</head><body>";
     
-    html += "<h1>JSON文件列表</h1>";
+    // 添加导航栏
+    html += "<div class=\"container\">";
+    html += "<nav class=\"navbar navbar-expand-lg navbar-dark bg-dark mb-4\">";
+    html += "  <div class=\"container-fluid\">";
+    html += "    <a class=\"navbar-brand\" href=\"/\">ESP32信息板</a>";
+    html += "    <button class=\"navbar-toggler\" type=\"button\" data-bs-toggle=\"collapse\" data-bs-target=\"#navbarNav\" aria-controls=\"navbarNav\" aria-expanded=\"false\" aria-label=\"Toggle navigation\">";
+    html += "      <span class=\"navbar-toggler-icon\"></span>";
+    html += "    </button>";
+    html += "    <div class=\"collapse navbar-collapse\" id=\"navbarNav\">";
+    html += "      <ul class=\"navbar-nav\">";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/\">配置</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-news\">新闻</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-calendar\">日历</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-notes\">留言板</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-iciba\">每日一句</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-astronauts\">太空站宇航员</a></li>";
+    html += "        <li class=\"nav-item\"><a class=\"nav-link active\" href=\"/json-files\">JSON文件</a></li>";
+    html += "      </ul>";
+    html += "    </div>";
+    html += "  </div>";
+    html += "</nav>";
+    
+    html += "<div class=\"card mb-4\">";
+    html += "  <div class=\"card-header bg-primary text-white\">JSON文件列表</div>";
+    html += "  <div class=\"card-body\">";
+    html += "    <div class=\"list-group\">";
     html += jsonFilesList;
+    html += "    </div>";
+    html += "  </div>";
+    html += "</div>";
     
-    html += "<p><a href='/'>返回首页</a></p>";
+    html += "<div class=\"card\">";
+    html += "  <div class=\"card-body text-center\">";
+    html += "    <a href=\"/\" class=\"btn btn-secondary\">返回首页</a>";
+    html += "  </div>";
+    html += "</div>";
+    
+    html += "<script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js\"></script>";
+    html += "</div>";
     html += "</body></html>";
     
     server.send(200, "text/html", html);
@@ -305,19 +752,33 @@ void WebConfigServer::handleJsonFile() {
  * 处理404错误
  */
 void WebConfigServer::handleNotFound() {
-    String message = "文件未找到: ";
-    message += server.uri();
-    message += "\n方法: ";
-    message += (server.method() == HTTP_GET ? "GET" : "POST");
-    message += "\n参数: ";
-    message += String(server.args());
-    message += "\n";
+    String html = "";
+    html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>页面不存在</title>";
+    html += "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>";
+    html += "</head><body>";
     
-    for (uint8_t i = 0; i < server.args(); i++) {
-        message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-    }
+    // 统一的导航栏样式
+    html += "<div class=\"container\">";
+    html += "<nav class=\"navbar navbar-expand-lg navbar-dark bg-dark mb-4\">";
+    html += "  <div class=\"container-fluid\">";
+    html += "    <a class=\"navbar-brand\" href=\"/\">ESP32信息板</a>";
+    html += "  </div>";
+    html += "</nav>";
     
-    server.send(404, "text/plain", message);
+    // 内容区域
+    html += "<div class=\"card mb-4\">";
+    html += "  <div class=\"card-header bg-danger text-white\">页面不存在</div>";
+    html += "  <div class=\"card-body\">";
+    html += "    <h1>404 - 页面不存在</h1>";
+    html += "    <p>您请求的页面不存在</p>";
+    html += "    <a href=\"/\" class=\"btn btn-primary\">返回首页</a>";
+    html += "  </div>";
+    html += "</div>";
+    
+    html += "</div>";
+    html += "</body></html>";
+    
+    server.send(404, "text/html", html);
 }
 
 /**
@@ -365,28 +826,31 @@ bool WebConfigServer::saveWiFiConfig(const String& ssid, const String& password)
  * 获取所有JSON文件列表
  */
 String WebConfigServer::getJsonFilesList() {
-    String result = "<ul>";
+    String result = "";
     
     // 打开根目录
     File root = SPIFFS.open("/");
     if (!root) {
-        return "<p>无法打开文件系统</p>";
+        return "<div class=\"alert alert-danger\">无法打开文件系统</div>";
     }
     
     // 读取文件列表
     File file = root.openNextFile();
+    bool hasFiles = false;
+    
     while (file) {
         String fileName = file.name();
         if (fileName.endsWith(".json")) {
-            // 为每个文件创建一个可点击的列表项，点击后通过URL参数请求文件内容
-            result += "<li>";
-            result += "<a href='/json-file?name=" + urlEncode(fileName) + "'>" + fileName + "</a>";
-            result += "</li>";
+            hasFiles = true;
+            // 为每个文件创建一个可点击的列表项，使用Bootstrap样式
+            result += "<a href='/json-file?name=" + urlEncode(fileName) + "' class=\"list-group-item list-group-item-action\">" + fileName + "</a>";
         }
         file = root.openNextFile();
     }
     
-    result += "</ul>";
+    if (!hasFiles) {
+        result = "<div class=\"alert alert-info\">当前没有JSON文件</div>";
+    }
     
     return result;
 }
@@ -428,23 +892,57 @@ void WebConfigServer::handleJsonFileContent() {
         String fileContent = readJsonFileContent(fileName);
         
         String html = "";
-        html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>查看JSON文件: " + fileName + "</title>";
-        html += "<style>body{font-family:Arial,sans-serif;margin:20px;}";
-        html += "h1{color:#333;}";
-        html += "pre{background-color:#eee;padding:10px;border-radius:4px;overflow-x:auto;white-space:pre-wrap;word-wrap:break-word;}";
-        html += "a{color:#0066cc;text-decoration:none;}";
-        html += "a:hover{text-decoration:underline;}";
-        html += "</style></head><body>";
+        html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>查看JSON文件: " + fileName + "</title>";
+        html += "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>";
+        html += "</head><body>";
         
-        html += "<h1>JSON文件内容: " + fileName + "</h1>";
-        html += "<pre>" + fileContent + "</pre>";
-        html += "<p><a href='/json-files'>返回文件列表</a></p>";
-        html += "<p><a href='/'>返回首页</a></p>";
+        // 统一的导航栏样式
+        html += "<div class=\"container\">";
+        html += "<nav class=\"navbar navbar-expand-lg navbar-dark bg-dark mb-4\">";
+        html += "  <div class=\"container-fluid\">";
+        html += "    <a class=\"navbar-brand\" href=\"/\">ESP32信息板</a>";
+        html += "    <button class=\"navbar-toggler\" type=\"button\" data-bs-toggle=\"collapse\" data-bs-target=\"#navbarNav\" aria-controls=\"navbarNav\" aria-expanded=\"false\" aria-label=\"Toggle navigation\">";
+        html += "      <span class=\"navbar-toggler-icon\"></span>";
+        html += "    </button>";
+        html += "    <div class=\"collapse navbar-collapse\" id=\"navbarNav\">";
+        html += "      <ul class=\"navbar-nav\">";
+        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/\">首页</a></li>";
+        html += "        <li class=\"nav-item\"><a class=\"nav-link active\" href=\"/json-files\">JSON文件</a></li>";
+        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-news\">新闻</a></li>";
+        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-calendar\">日历</a></li>";
+        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-notes\">留言板</a></li>";
+        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-iciba\">每日一句</a></li>";
+        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-astronauts\">太空站宇航员</a></li>";
+        html += "      </ul>";
+        html += "    </div>";
+        html += "  </div>";
+        html += "</nav>";
+        
+        html += "<div class=\"card mb-4\">";
+        html += "  <div class=\"card-header bg-info text-white\">JSON文件内容: " + fileName + "</div>";
+        html += "  <div class=\"card-body\">";
+        html += "    <pre class=\"bg-light p-4 rounded overflow-auto\" style=\"font-family: monospace; font-size: 14px; line-height: 1.5; max-height: 500px;\">" + fileContent + "</pre>";
+        html += "  </div>";
+        html += "</div>";
+        
+        html += "<div class=\"card mb-4\">";
+        html += "  <div class=\"card-body text-center\">";
+        html += "    <a href=\"/json-files\" class=\"btn btn-secondary\">返回文件列表</a>";
+        html += "    <a href=\"/\" class=\"btn btn-primary ms-2\">返回首页</a>";
+        html += "  </div>";
+        html += "</div>";
+        
+        html += "<script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js\"></script>";
+        html += "</div>";
         html += "</body></html>";
         
         server.send(200, "text/html", html);
     } else {
-        server.send(400, "text/html", "<!DOCTYPE html><html><body><meta charset='UTF-8'><h1>参数错误!</h1></body></html>");
+        String errorHtml = "";
+        errorHtml += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'></head>";
+        errorHtml += "<body><div class=\"container\"><nav class=\"navbar navbar-expand-lg navbar-dark bg-dark mb-4\"><div class=\"container-fluid\"><a class=\"navbar-brand\" href=\"/\">ESP32信息板</a></div></nav>";
+        errorHtml += "<div class=\"card mb-4\"><div class=\"card-header bg-danger text-white\">参数错误</div><div class=\"card-body\"><h1>缺少必要参数</h1><a href=\"/json-files\" class=\"btn btn-secondary\">返回文件列表</a></div></div></div></body></html>";
+        server.send(400, "text/html", errorHtml);
     }
 }
 
@@ -454,24 +952,40 @@ void WebConfigServer::handleJsonFileContent() {
 String WebConfigServer::readJsonFileContent(const String& fileName) {
     String content = "";
     
-    File file = SPIFFS.open("/"+fileName, "r");
+    // 尝试多种路径格式打开文件
+    String filePath = "/" + fileName;
+    File file = SPIFFS.open(filePath, "r");
+    
+    // 如果直接打开失败，尝试从data目录打开（某些数据可能存放在那里）
+    if (!file) {
+        filePath = "/data/" + fileName;
+        file = SPIFFS.open(filePath, "r");
+    }
+    
     if (file) {
         content = file.readString();
         file.close();
         
-        // 尝试格式化JSON以提高可读性
-        DynamicJsonDocument doc(1024);
+        // 检查文件大小，如果过大，限制缓冲区大小
+        const size_t capacity = min(content.length() * 2, (size_t)8192); // 最大8KB缓冲区
+        DynamicJsonDocument doc(capacity);
         DeserializationError error = deserializeJson(doc, content);
+        
         if (!error) {
-            // 成功解析JSON，可以选择重新格式化输出
+            // 成功解析JSON，格式化输出
             String formattedContent;
             serializeJsonPretty(doc, formattedContent);
             return formattedContent;
+        } else {
+            // 解析失败，返回原始内容但添加错误信息
+            return "JSON解析失败: " + String(error.c_str()) + "\n\n原始内容:\n" + content;
         }
-        // 如果解析失败，返回原始内容
-        return content;
     } else {
-        content = "无法打开文件: " + fileName;
+        content = "无法打开文件: " + fileName + "\n尝试的路径: " + filePath;
+        // 添加文件系统信息以帮助调试
+        if (!SPIFFS.begin(true)) {
+            content += "\n错误: SPIFFS文件系统未初始化";
+        }
         return content;
     }
 }

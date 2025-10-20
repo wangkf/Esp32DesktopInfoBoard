@@ -443,8 +443,6 @@ void ScreenManager::showSoulScreen() {
     lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x808000), 0); // 橄榄绿
     }
 }
-
-/**
 //*** 显示随机的乌鸡汤
 void ScreenManager::showRandomToxicSoul() {
     // 确保toxic_soul_img被创建并显示在底部

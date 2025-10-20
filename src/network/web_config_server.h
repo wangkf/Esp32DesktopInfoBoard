@@ -85,6 +85,19 @@ public:
 
     // 检查服务器是否正在运行
     bool isServerRunning();
+    
+    // 生成通用的屏幕页面模板
+    String generateScreenPage(const String& screenName, const String& screenTitle, const String& content);
+    
+    // 生成月历表格
+    String generateMonthCalendar(int year, int month);
+    
+    // 处理各屏幕类型的页面请求
+    void handleNewsScreen();
+    void handleCalendarScreen();
+    void handleNotesScreen();
+    void handleIcibaScreen();
+    void handleAstronautsScreen();
 };
 
 #endif // WEB_CONFIG_SERVER_H

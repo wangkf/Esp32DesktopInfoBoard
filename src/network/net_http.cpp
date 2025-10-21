@@ -5,8 +5,6 @@
 #include "config/config.h"
 #include "config/config_manager.h"
 #include "manager/time_manager.h"
-// 声明全局字体
-extern const lv_font_t lvgl_font_digital_48;
 #include "manager/data_manager.h"
 #include <time.h>
 #include <map>

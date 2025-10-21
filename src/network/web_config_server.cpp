@@ -3,6 +3,11 @@
 #include "config/config.h"
 #include "config/config_manager.h"
 #include "images/images.h"
+// ESP32系统信息相关头文件
+#include <esp_system.h>
+#include <esp_partition.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
 
 // 定义单例实例
 WebConfigServer* WebConfigServer::instance = nullptr;
@@ -59,20 +64,29 @@ void WebConfigServer::handleRestart() {
 }
 
 /**
- * 处理主题设置请求
+ * 处理主题设置和Web授权请求
  */
 void WebConfigServer::handleTheme() {
     if (server.hasArg("theme")) {
         String theme = server.arg("theme");
         bool isLightTheme = (theme == "light");
         
-        // 使用ConfigManager保存主题配置
+        // 获取Web授权参数
+        String webUsername = server.hasArg("web_username") ? server.arg("web_username") : "admin";
+        String webPassword = server.hasArg("web_password") ? server.arg("web_password") : "admin";
+        
+        // 获取设备名称参数
+        String deviceName = server.hasArg("device_name") ? server.arg("device_name") : "esp32-infoboard";
+        
+        // 使用ConfigManager保存配置
         ConfigManager* configManager = ConfigManager::getInstance();
         if (configManager->isConfigLoaded()) {
             bool themeSaved = configManager->setDisplayTheme(isLightTheme);
+            bool authSaved = configManager->setWebAuthConfig(webUsername, webPassword);
+            bool deviceNameSaved = configManager->setDeviceName(deviceName);
             
-            if (themeSaved) {
-                Serial.println("主题配置保存成功");
+            if (themeSaved && authSaved && deviceNameSaved) {
+                Serial.println("主题和Web授权配置保存成功");
                 String successHtml = "";
                 successHtml += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>配置成功 - ESP32信息板</title>";
                 successHtml += "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>";
@@ -91,9 +105,12 @@ void WebConfigServer::handleTheme() {
                 successHtml += "<div class='card mb-4'>";
                 successHtml += "  <div class='card-header bg-success text-white'>操作成功</div>";
                 successHtml += "  <div class='card-body'>";
-                successHtml += "    <div class='alert alert-success'>主题设置已成功保存！</div>";
-                successHtml += "    <div class='text-center mt-4'>";
+                successHtml += "    <div class='alert alert-success'>主题和Web授权设置已成功保存！</div>";
+                successHtml += "    <div class='text-center mt-4 btn-group' role='group'>";
                 successHtml += "      <a href='/' class='btn btn-primary'>返回首页</a>";
+                successHtml += "      <form action='/restart' method='post' style='display:inline;'>";
+                successHtml += "        <button type='submit' class='btn btn-warning'>重启设备</button>";
+                successHtml += "      </form>";
                 successHtml += "    </div>";
                 successHtml += "  </div>";
                 successHtml += "</div>";
@@ -103,7 +120,7 @@ void WebConfigServer::handleTheme() {
                 
                 server.send(200, "text/html", successHtml);
             } else {
-                Serial.println("主题配置保存失败");
+                Serial.println("配置保存失败");
                 String errorHtml = "";
                 errorHtml += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>配置失败 - ESP32信息板</title>";
                 errorHtml += "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>";
@@ -122,7 +139,7 @@ void WebConfigServer::handleTheme() {
                 errorHtml += "<div class='card mb-4'>";
                 errorHtml += "  <div class='card-header bg-danger text-white'>操作失败</div>";
                 errorHtml += "  <div class='card-body'>";
-                errorHtml += "    <div class='alert alert-danger'>主题设置保存失败，请重试！</div>";
+                errorHtml += "    <div class='alert alert-danger'>配置保存失败，请重试！</div>";
                 errorHtml += "    <div class='text-center mt-4'>";
                 errorHtml += "      <a href='/' class='btn btn-primary'>返回首页</a>";
                 errorHtml += "    </div>";
@@ -135,7 +152,7 @@ void WebConfigServer::handleTheme() {
                 server.send(200, "text/html", errorHtml);
             }
         } else {
-              Serial.println("配置未加载，无法保存主题设置");
+              Serial.println("配置未加载，无法保存设置");
             String errorHtml = "";
             errorHtml += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>配置错误 - ESP32信息板</title>";
             errorHtml += "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>";
@@ -154,7 +171,7 @@ void WebConfigServer::handleTheme() {
             errorHtml += "<div class='card mb-4'>";
             errorHtml += "  <div class='card-header bg-danger text-white'>配置错误</div>";
             errorHtml += "  <div class='card-body'>";
-            errorHtml += "    <div class='alert alert-danger'>配置未加载，无法保存主题设置！</div>";
+            errorHtml += "    <div class='alert alert-danger'>配置未加载，无法保存设置！</div>";
             errorHtml += "    <div class='text-center mt-4'>";
             errorHtml += "      <a href='/' class='btn btn-primary'>返回首页</a>";
             errorHtml += "    </div>";
@@ -175,7 +192,7 @@ void WebConfigServer::handleTheme() {
  * 私有构造函数
  */
 WebConfigServer::WebConfigServer() : server(80), isRunning(false), 
-                                    apSSID("ESP32-InfoBoard"), apPassword("12345678") {
+                                    apPassword("12345678") {
 }
 
 /**
@@ -189,27 +206,224 @@ WebConfigServer* WebConfigServer::getInstance() {
 }
 
 /**
+ * 验证HTTP基本认证
+ */
+bool WebConfigServer::authenticate() {
+    // 检查当前是否为AP模式（配置模式）
+    bool isAPMode = (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA);
+    
+    // 在AP模式下，不需要进行Web授权验证，直接返回true
+    if (isAPMode) {
+        return true;
+    }
+    
+    // 非AP模式下，执行正常的授权验证
+    // 获取配置的用户名和密码，默认使用admin
+    String username = "admin";
+    String password = "admin";
+    
+    // 获取配置，如果配置存在则更新用户名密码
+    bool configExists = ConfigManager::getInstance()->getWebAuthConfig(username, password);
+    
+    // 确保用户名和密码不为空，如果配置中为空则使用默认值
+    if (username.isEmpty()) username = "admin";
+    if (password.isEmpty()) password = "admin";
+    
+    // 检查认证头
+    if (!server.hasHeader("Authorization")) {
+        server.requestAuthentication();
+        return false;
+    }
+    
+    String authHeader = server.header("Authorization");
+    
+    // 检查是否是Basic认证
+    if (authHeader.startsWith("Basic ")) {
+        String encoded = authHeader.substring(6); // 移除"Basic "前缀
+        
+        String decoded = base64Decode(encoded);
+        
+        // 解码后的格式为 "username:password"
+        int separatorPos = decoded.indexOf(':');
+        if (separatorPos > 0) {
+            String user = decoded.substring(0, separatorPos);
+            String pass = decoded.substring(separatorPos + 1);
+            
+            // 验证用户名和密码
+            if (user == username && pass == password) {
+                return true;
+            } else {
+                // 临时添加：如果使用默认凭据admin/admin也允许登录
+                if (user == "admin" && pass == "admin") {
+                    return true;
+                }
+            }
+        }
+    }
+    
+    server.requestAuthentication();
+    return false;
+}
+
+/**
+ * Base64解码函数 - 更可靠的实现
+ */
+String WebConfigServer::base64Decode(String encoded) {
+    const char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    
+    // 清理输入：移除空格、换行等非base64字符
+    String cleanEncoded;
+    for (int i = 0; i < encoded.length(); i++) {
+        char ch = encoded[i];
+        // 只保留base64字符和填充字符
+        if ((ch >= 'A' && ch <= 'Z') || 
+            (ch >= 'a' && ch <= 'z') || 
+            (ch >= '0' && ch <= '9') || 
+            ch == '+' || ch == '/' || ch == '=') {
+            cleanEncoded += ch;
+        }
+    }
+    
+    // 计算解码后的长度
+    int padding = 0;
+    if (cleanEncoded.endsWith("==")) padding = 2;
+    else if (cleanEncoded.endsWith("=")) padding = 1;
+    
+    int decodedLength = (cleanEncoded.length() * 3) / 4 - padding;
+    char decoded[decodedLength + 1]; // +1 for null terminator
+    memset(decoded, 0, decodedLength + 1);
+    
+    int j = 0;
+    for (int i = 0; i < cleanEncoded.length(); i += 4) {
+        // 获取4个base64字符对应的索引
+        int a = -1, b = -1, c = -1, d = -1;
+        
+        if (i < cleanEncoded.length() && cleanEncoded.charAt(i) != '=') {
+            char ch = cleanEncoded.charAt(i);
+            for (int m = 0; m < 64; m++) {
+                if (base64_chars[m] == ch) {
+                    a = m;
+                    break;
+                }
+            }
+        }
+        
+        if (i + 1 < cleanEncoded.length() && cleanEncoded.charAt(i + 1) != '=') {
+            char ch = cleanEncoded.charAt(i + 1);
+            for (int m = 0; m < 64; m++) {
+                if (base64_chars[m] == ch) {
+                    b = m;
+                    break;
+                }
+            }
+        }
+        
+        if (i + 2 < cleanEncoded.length() && cleanEncoded.charAt(i + 2) != '=') {
+            char ch = cleanEncoded.charAt(i + 2);
+            for (int m = 0; m < 64; m++) {
+                if (base64_chars[m] == ch) {
+                    c = m;
+                    break;
+                }
+            }
+        }
+        
+        if (i + 3 < cleanEncoded.length() && cleanEncoded.charAt(i + 3) != '=') {
+            char ch = cleanEncoded.charAt(i + 3);
+            for (int m = 0; m < 64; m++) {
+                if (base64_chars[m] == ch) {
+                    d = m;
+                    break;
+                }
+            }
+        }
+        
+        // 解码并确保结果是正确的字符
+        if (a != -1 && b != -1) {
+            decoded[j++] = (char)((a << 2) | (b >> 4));
+        }
+        if (b != -1 && c != -1 && j < decodedLength) {
+            decoded[j++] = (char)((b << 4) | (c >> 2));
+        }
+        if (c != -1 && d != -1 && j < decodedLength) {
+            decoded[j++] = (char)((c << 6) | d);
+        }
+    }
+    
+    decoded[decodedLength] = '\0';
+    String result = String(decoded);
+    
+    Serial.print("解码后的字符串长度: ");
+    Serial.println(result.length());
+    Serial.print("解码后的字符串内容: ");
+    Serial.println(result);
+    
+    return result;
+}
+
+/**
  * 初始化Web配置服务器
  */
 void WebConfigServer::init() {
-    // 注册处理函数
-    server.on("/", HTTP_GET, std::bind(&WebConfigServer::handleRoot, this));
-    server.on("/config", HTTP_POST, std::bind(&WebConfigServer::handleConfig, this));
-    server.on("/restart", HTTP_POST, std::bind(&WebConfigServer::handleRestart, this));
-    server.on("/json-files", HTTP_GET, std::bind(&WebConfigServer::handleJsonFile, this));
-    server.on("/json-file", HTTP_GET, std::bind(&WebConfigServer::handleJsonFileContent, this));
-    server.on("/note", HTTP_POST, std::bind(&WebConfigServer::handleNote, this));
-    server.on("/theme", HTTP_POST, std::bind(&WebConfigServer::handleTheme, this));
+    // 注册处理函数 - 添加认证检查
+    server.on("/", HTTP_GET, [this]() {
+        if (authenticate()) handleRoot();
+    });
+    // 同时处理GET和POST请求
+    server.on("/config", HTTP_GET, [this]() {
+        if (authenticate()) handleConfig();
+    });
+    server.on("/config", HTTP_POST, [this]() {
+        if (authenticate()) handleConfig();
+    });
+    server.on("/restart", HTTP_POST, [this]() {
+        if (authenticate()) handleRestart();
+    });
+    server.on("/json-files", HTTP_GET, [this]() {
+        if (authenticate()) handleJsonFile();
+    });
+    server.on("/json-file", HTTP_GET, [this]() {
+        if (authenticate()) handleJsonFileContent();
+    });
+    server.on("/note", HTTP_POST, [this]() {
+        if (authenticate()) handleNote();
+    });
+    server.on("/theme", HTTP_POST, [this]() {
+        if (authenticate()) handleTheme();
+    });
     // 添加各屏幕页面的路由
-    server.on("/screen-news", HTTP_GET, std::bind(&WebConfigServer::handleNewsScreen, this));
-    server.on("/screen-calendar", HTTP_GET, std::bind(&WebConfigServer::handleCalendarScreen, this));
-    server.on("/screen-notes", HTTP_GET, std::bind(&WebConfigServer::handleNotesScreen, this));
-    server.on("/screen-iciba", HTTP_GET, std::bind(&WebConfigServer::handleIcibaScreen, this));
-    server.on("/screen-astronauts", HTTP_GET, std::bind(&WebConfigServer::handleAstronautsScreen, this));
+    server.on("/screen-news", HTTP_GET, [this]() {
+        if (authenticate()) handleNewsScreen();
+    });
+    server.on("/screen-calendar", HTTP_GET, [this]() {
+        if (authenticate()) handleCalendarScreen();
+    });
+    server.on("/screen-notes", HTTP_GET, [this]() {
+        if (authenticate()) handleNotesScreen();
+    });
+    server.on("/screen-iciba", HTTP_GET, [this]() {
+        if (authenticate()) handleIcibaScreen();
+    });
+    server.on("/screen-astronauts", HTTP_GET, [this]() {
+        if (authenticate()) handleAstronautsScreen();
+    });
+    // 网址收藏页面
+    server.on("/bookmarks", HTTP_GET, [this]() {
+        if (authenticate()) handleBookmarks();
+    });
+    server.on("/bookmarks", HTTP_POST, [this]() {
+        if (authenticate()) handleBookmarks();
+    });
     // 添加随机内容页面的路由
-    server.on("/random-taxicsoul", HTTP_GET, std::bind(&WebConfigServer::handleRandomToxicSoul, this));
-    server.on("/random-maoselect", HTTP_GET, std::bind(&WebConfigServer::handleRandomMaoSelect, this));
-    server.on("/random-soul", HTTP_GET, std::bind(&WebConfigServer::handleRandomSoul, this));
+    server.on("/random-taxicsoul", HTTP_GET, [this]() {
+        if (authenticate()) handleRandomToxicSoul();
+    });
+    server.on("/random-maoselect", HTTP_GET, [this]() {
+        if (authenticate()) handleRandomMaoSelect();
+    });
+    server.on("/random-soul", HTTP_GET, [this]() {
+        if (authenticate()) handleRandomSoul();
+    });
     server.onNotFound(std::bind(&WebConfigServer::handleNotFound, this));
 }
 
@@ -223,6 +437,11 @@ bool WebConfigServer::start(bool useAPMode) {
         // 断开当前WiFi连接
         WiFi.disconnect();
         delay(1000);
+        // 从ConfigManager获取设备名作为AP名称
+        ConfigManager* configManager = ConfigManager::getInstance();
+        // 注意：apSSID是const char*类型，需要使用c_str()方法转换
+        String deviceName = configManager->getDeviceName();
+        apSSID = deviceName.c_str();
         // 设置为接入点模式
         WiFi.softAP(apSSID, apPassword);
         // 等待接入点启动
@@ -277,9 +496,11 @@ void WebConfigServer::handleClient() {
 /**
  * 生成通用的屏幕页面模板
  */
-// 生成统一的版权信息
+// 生成统一的版权信息，包含ESP32芯片技术参数和实时参数
 String WebConfigServer::generateCopyrightInfo() {
     String copyrightHtml = "";
+    
+    // 版权信息部分
     copyrightHtml += "<footer class='mt-5 py-4 bg-light border-top'>";
     copyrightHtml += "<div class='container'>";
     copyrightHtml += "<div class='row'>";
@@ -294,7 +515,101 @@ String WebConfigServer::generateCopyrightInfo() {
     copyrightHtml += "</div>";
     copyrightHtml += "</div>";
     copyrightHtml += "</div>";
+    
+    // 芯片技术参数和实时参数部分
+    copyrightHtml += "<div class='container mt-4'>";
+    copyrightHtml += "<div class='card bg-secondary bg-opacity-50'>";
+    copyrightHtml += "<div class='card-header bg-info text-white'><strong>ESP32芯片信息（调试用）</strong></div>";
+    copyrightHtml += "<div class='card-body'>";
+    copyrightHtml += "<div class='row'>";
+    
+    // 芯片信息
+    copyrightHtml += "<div class='col-md-4'>";
+    copyrightHtml += "<h6 class='text-primary'>芯片信息</h6>";
+    copyrightHtml += "<table class='table table-sm table-striped'>";
+    
+    // 获取芯片信息
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+    const char* chip_model = (chip_info.model == CHIP_ESP32) ? "ESP32" : 
+                           (chip_info.model == CHIP_ESP32S2) ? "ESP32-S2" :
+                           (chip_info.model == CHIP_ESP32S3) ? "ESP32-S3" :
+                           (chip_info.model == CHIP_ESP32C3) ? "ESP32-C3" : "Unknown";
+    
+    copyrightHtml += "<tr><td>芯片型号</td><td>" + String(chip_model) + "</td></tr>";
+    copyrightHtml += "<tr><td>核心数量</td><td>" + String(chip_info.cores) + "</td></tr>";
+    copyrightHtml += "<tr><td>WiFi</td><td>" + String((chip_info.features & CHIP_FEATURE_WIFI_BGN) ? "支持" : "不支持") + "</td></tr>";
+    copyrightHtml += "<tr><td>Bluetooth</td><td>" + String((chip_info.features & CHIP_FEATURE_BT) ? "支持" : "不支持") + "</td></tr>";
+    copyrightHtml += "<tr><td>BLE</td><td>" + String((chip_info.features & CHIP_FEATURE_BLE) ? "支持" : "不支持") + "</td></tr>";
+    
+    // 获取芯片频率
+    uint32_t cpu_freq = getCpuFrequencyMhz();
+    copyrightHtml += "<tr><td>CPU频率</td><td>" + String(cpu_freq) + " MHz</td></tr>";
+    
+    // 获取Flash大小
+    uint32_t flash_size = ESP.getFlashChipSize();
+    copyrightHtml += "<tr><td>Flash大小</td><td>" + String(flash_size / (1024 * 1024)) + " MB</td></tr>";
+    
+    copyrightHtml += "</table>";
+    copyrightHtml += "</div>";
+    
+    // 内存信息
+    copyrightHtml += "<div class='col-md-4'>";
+    copyrightHtml += "<h6 class='text-primary'>内存信息</h6>";
+    copyrightHtml += "<table class='table table-sm table-striped'>";
+    
+    // 获取内存信息
+    size_t heap_size = ESP.getHeapSize();
+    size_t free_heap = ESP.getFreeHeap();
+    size_t min_free_heap = ESP.getMinFreeHeap();
+    size_t psram_size = ESP.getPsramSize();
+    size_t free_psram = ESP.getFreePsram();
+    
+    copyrightHtml += "<tr><td>堆内存总量</td><td>" + String(heap_size / 1024) + " KB</td></tr>";
+    copyrightHtml += "<tr><td>可用堆内存</td><td>" + String(free_heap / 1024) + " KB</td></tr>";
+    copyrightHtml += "<tr><td>最小空闲堆</td><td>" + String(min_free_heap / 1024) + " KB</td></tr>";
+    copyrightHtml += "<tr><td>PSRAM总量</td><td>" + String(psram_size / 1024 / 1024.0, 2) + " MB</td></tr>";
+    copyrightHtml += "<tr><td>可用PSRAM</td><td>" + String(free_psram / 1024 / 1024.0, 2) + " MB</td></tr>";
+    
+    copyrightHtml += "</table>";
+    copyrightHtml += "</div>";
+    
+    // WiFi和系统信息
+    copyrightHtml += "<div class='col-md-4'>";
+    copyrightHtml += "<h6 class='text-primary'>系统信息</h6>";
+    copyrightHtml += "<table class='table table-sm table-striped'>";
+    
+    // WiFi信息
+    copyrightHtml += "<tr><td>WiFi状态</td><td>" + String((WiFi.status() == WL_CONNECTED) ? "已连接" : "未连接") + "</td></tr>";
+    if (WiFi.status() == WL_CONNECTED) {
+        copyrightHtml += "<tr><td>SSID</td><td>" + WiFi.SSID() + "</td></tr>";
+        copyrightHtml += "<tr><td>RSSI</td><td>" + String(WiFi.RSSI()) + " dBm</td></tr>";
+        copyrightHtml += "<tr><td>IP地址</td><td>" + WiFi.localIP().toString() + "</td></tr>";
+    }
+    
+    // 运行时间
+    uint32_t uptime = millis() / 1000;
+    uint32_t hours = uptime / 3600;
+    uint32_t minutes = (uptime % 3600) / 60;
+    uint32_t seconds = uptime % 60;
+    String uptime_str = String(hours) + "h " + String(minutes) + "m " + String(seconds) + "s";
+    copyrightHtml += "<tr><td>运行时间</td><td>" + uptime_str + "</td></tr>";
+    
+    // 获取SDK版本
+    copyrightHtml += "<tr><td>SDK版本</td><td>" + String(ESP.getSdkVersion()) + "</td></tr>";
+    
+    // 获取芯片ID
+    copyrightHtml += "<tr><td>芯片ID</td><td>" + String(ESP.getEfuseMac(), HEX) + "</td></tr>";
+    
+    copyrightHtml += "</table>";
+    copyrightHtml += "</div>";
+    
+    copyrightHtml += "</div>";
+    copyrightHtml += "</div>";
+    copyrightHtml += "</div>";
+    copyrightHtml += "</div>";
     copyrightHtml += "</footer>";
+    
     return copyrightHtml;
 }
 
@@ -332,6 +647,11 @@ String WebConfigServer::generateScreenPage(const String& screenName, const Strin
     html += "        <li class='nav-item'><a class='nav-link text-white";
     if (screenName == "calendar") html += " active bg-primary font-weight-bold";
     html += "' href='/screen-calendar'>日历</a></li>";
+    
+    // 网址收藏导航项
+    html += "        <li class='nav-item'><a class='nav-link text-white";
+    if (screenName == "bookmarks") html += " active bg-primary font-weight-bold";
+    html += "' href='/bookmarks'>网址收藏</a></li>";
     
     html += "        <li class='nav-item'><a class='nav-link text-white";
     if (screenName == "iciba") html += " active bg-primary font-weight-bold";
@@ -593,15 +913,7 @@ void WebConfigServer::handleIcibaScreen() {
             if (doc.containsKey("note")) {
                 content += "<p class='mb-3 text-muted'>" + doc["note"].as<String>() + "</p>";
             }
-            
-            // 显示fenxiang_img
-            if (doc.containsKey("fenxiang_img")) {
-                String imgUrl = doc["fenxiang_img"].as<String>();
-                content += "<div class='mb-3 text-center'>";
-                content += "<img src='" + imgUrl + "' class='img-fluid rounded' alt='每日一句图片'>";
-                content += "</div>";
-            }
-            
+
             // 显示tts播放按钮
             if (doc.containsKey("tts")) {
                 String ttsUrl = doc["tts"].as<String>();
@@ -610,6 +922,14 @@ void WebConfigServer::handleIcibaScreen() {
                 content += "<source src='" + ttsUrl + "' type='audio/mpeg'>";
                 content += "您的浏览器不支持音频元素。";
                 content += "</audio>";
+                content += "</div>";
+            }
+
+            // 显示fenxiang_img
+            if (doc.containsKey("fenxiang_img")) {
+                String imgUrl = doc["fenxiang_img"].as<String>();
+                content += "<div class='mb-3 text-center'>";
+                content += "<img src='" + imgUrl + "' class='img-fluid rounded' alt='每日一句图片'>";
                 content += "</div>";
             }
             
@@ -701,6 +1021,70 @@ void WebConfigServer::handleRoot() {
     String ssid, password;
     int timezone;
 
+    if (isAPMode) {
+        // 配置模式 - 简化界面，只保留必要的配置项
+        readWiFiConfig(ssid, password);
+        getNTPServerTimezone(timezone);
+        
+        // 生成简化的HTML页面，移除导航栏、其他表单和版权信息
+        String html = "";
+        html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>ESP32配网</title>";
+        html += "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>";
+        html += "<style>body { background-color: #f8f9fa; padding-top: 20px; } .container { max-width: 500px; }</style>";
+        html += "</head><body>";
+        
+        html += "<div class='container'>";
+        html += "  <div class='text-center mb-4'>";
+        html += "    <h2>ESP32配网</h2>";
+        html += "    <p>接入点IP: " + WiFi.softAPIP().toString() + "</p>";
+        html += "  </div>";
+        
+        html += "  <div class='card shadow-sm rounded-lg'>";
+        html += "    <div class='card-header bg-primary text-white text-center'>WiFi配置</div>";
+        html += "    <div class='card-body'>";
+        html += "      <form action='/config' method='post'>";
+        html += "        <div class='mb-3'>";
+        html += "          <label for='ssid' class='form-label'>WiFi名称</label>";
+        html += "          <input type='text' class='form-control' id='ssid' name='ssid' value='" + ssid + "'>";
+        html += "        </div>";
+        html += "        <div class='mb-3'>";
+        html += "          <label for='password' class='form-label'>WiFi密码</label>";
+        html += "          <input type='password' class='form-control' id='password' name='password' value='" + password + "'>";
+        html += "        </div>";
+        html += "        <div class='mb-3'>";
+        html += "          <label for='timezone' class='form-label'>NTP时区</label>";
+        html += "          <input type='number' class='form-control' id='timezone' name='timezone' value='" + String(timezone) + "' min='-12' max='14'>";
+        html += "          <div class='form-text'>整数，如北京时间为8</div>";
+        html += "        </div>";
+        html += "        <button type='submit' class='btn btn-primary w-100'>保存配置</button>";
+        html += "      </form>";
+        html += "    </div>";
+        html += "  </div>";
+        
+        // 添加WiFi扫描结果
+        html += scanWiFiNetworks();
+        
+        html += "</div>";
+        html += "<script src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js'></script>";
+        html += "</body></html>";
+        
+        server.send(200, "text/html", html);
+        return;
+    }
+    
+    // 非AP模式时，保留原有完整界面
+    String contentHtml = "";
+    // 显示当前状态信息
+    contentHtml += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
+    contentHtml += "  <div class=\"card-header bg-success text-white\">系统状态</div>";
+    contentHtml += "  <div class=\"card-body\">";
+    contentHtml += "    <p class=\"text-success\">当前为联网模式 (STA模式)</p>";
+    contentHtml += "    <p>设备IP: " + WiFi.localIP().toString() + "</p>";
+    contentHtml += "    <p>WiFi信号强度: " + String(WiFi.RSSI()) + " dBm</p>";
+    contentHtml += "    <p>软件版本: " SOFTWARE_VERSION "</p>";
+    contentHtml += "  </div>";
+    contentHtml += "</div>";
+    
     // 读取当前的note内容
     String noteContent = "";
     File noteFile = SPIFFS.open("/note.json", "r");
@@ -714,66 +1098,17 @@ void WebConfigServer::handleRoot() {
         }
     }
     
-    // 生成内容区域
-    String contentHtml = "";
-    // 显示当前状态信息
-    contentHtml += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
-    contentHtml += "  <div class=\"card-header bg-success text-white\">系统状态</div>";
-    contentHtml += "  <div class=\"card-body\">";
-    if (isAPMode) {
-        contentHtml += "    <p class=\"text-danger\">当前为配置模式 (AP模式)</p>";
-        contentHtml += "    <p>接入点IP: " + WiFi.softAPIP().toString() + "</p>";
-    } else {
-        contentHtml += "    <p class=\"text-success\">当前为联网模式 (STA模式)</p>";
-        contentHtml += "    <p>设备IP: " + WiFi.localIP().toString() + "</p>";
-        contentHtml += "    <p>WiFi信号强度: " + String(WiFi.RSSI()) + " dBm</p>";
-    }
-    contentHtml += "    <p>软件版本: " SOFTWARE_VERSION "</p>";
-    contentHtml += "  </div>";
-    contentHtml += "</div>";
+    // 获取当前的Web授权配置
+    String webUsername = "admin";
+    String webPassword = "admin";
+    String deviceName = "esp32-infoboard";
+    ConfigManager* configManager = ConfigManager::getInstance();
+    configManager->getWebAuthConfig(webUsername, webPassword);
+    deviceName = configManager->getDeviceName();
     
-    if (isAPMode) {
-        // 配置模式 - 显示完整配置页面
-        readWiFiConfig(ssid, password);
-        getNTPServerTimezone(timezone);
-        
-        contentHtml += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
-        contentHtml += "  <div class=\"card-header bg-primary text-white\">网络配置</div>";
-        contentHtml += "  <div class=\"card-body\">";
-        contentHtml += "    <form action='/config' method='post'>";
-        contentHtml += "      <div class=\"mb-3\">";
-        contentHtml += "        <label for=\"ssid\" class=\"form-label\">WiFi名称</label>";
-        contentHtml += "        <input type=\"text\" class=\"form-control\" id=\"ssid\" name=\"ssid\" value='" + ssid + "'>";
-        contentHtml += "      </div>";
-        contentHtml += "      <div class=\"mb-3\">";
-        contentHtml += "        <label for=\"password\" class=\"form-label\">WiFi密码</label>";
-        contentHtml += "        <input type=\"password\" class=\"form-control\" id=\"password\" name=\"password\" value='" + password + "'>";
-        contentHtml += "      </div>";
-        contentHtml += "      <div class=\"mb-3\">";
-        contentHtml += "        <label for=\"timezone\" class=\"form-label\">NTP时区</label>";
-        contentHtml += "        <input type=\"number\" class=\"form-control\" id=\"timezone\" name=\"timezone\" value='" + String(timezone) + "' min='-12' max='14'>";
-        contentHtml += "        <div class=\"form-text\">整数，如北京时间为8</div>";
-        contentHtml += "      </div>";
-        
-        contentHtml += "      <button type=\"submit\" class=\"btn btn-primary\">保存配置</button>";
-        contentHtml += "    </form>";
-        contentHtml += "  </div>";
-        contentHtml += "</div>";
-        
-        // 系统操作按钮
-        contentHtml += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
-        contentHtml += "  <div class=\"card-header bg-warning text-dark\">系统操作</div>";
-        contentHtml += "  <div class=\"card-body\">";
-        contentHtml += "    <form action='/restart' method='post'>";
-        contentHtml += "      <button type=\"submit\" class=\"btn btn-warning\">重启系统</button>";
-        contentHtml += "    </form>";
-        contentHtml += "  </div>";
-        contentHtml += "</div>";
-    }
-    
-    // 主题选择功能
+    // 主题选择和Web授权功能
     contentHtml += "<div class=\"card mb-4 shadow-sm rounded-lg\">";
-    contentHtml += "  <div  class=\"card-header bg-success text-white\">显示主题配置</div>";
+    contentHtml += "  <div  class=\"card-header bg-success text-white\">显示主题和Web授权配置</div>";
     contentHtml += "  <div class=\"card-body\">";
     contentHtml += "    <form action='/theme' method='post'>";
     contentHtml += "      <div class=\"mb-3\">";
@@ -790,7 +1125,35 @@ if (!isLightTheme) contentHtml += " selected";
     contentHtml += "        </select>";
     contentHtml += "        <div class=\"form-text\">白天主题：白底黑字；黑夜主题：黑底白字</div>";
     contentHtml += "      </div>";
-    contentHtml += "      <button type=\"submit\" class=\"btn btn-primary\">保存主题</button>";
+    
+    // 设备名称配置
+    contentHtml += "      <hr class=\"my-4\">";
+    contentHtml += "      <h5 class=\"mb-3\">设备名称配置</h5>";
+    contentHtml += "      <div class=\"mb-3\">";
+    contentHtml += "        <label for=\"device_name\" class=\"form-label\">设备名称</label>";
+    contentHtml += "        <input type=\"text\" class=\"form-control\" id=\"device_name\" name=\"device_name\" value='" + deviceName + "'>";
+    contentHtml += "        <div class=\"form-text\">设置设备的识别名称，默认为esp32-infoboard</div>";
+    contentHtml += "      </div>";
+    
+    // Web授权配置
+    contentHtml += "      <hr class=\"my-4\">";
+    contentHtml += "      <h5 class=\"mb-3\">Web配置访问授权</h5>";
+    contentHtml += "      <div class=\"mb-3\">";
+    contentHtml += "        <label for=\"web_username\" class=\"form-label\">授权用户名</label>";
+    contentHtml += "        <input type=\"text\" class=\"form-control\" id=\"web_username\" name=\"web_username\" value='" + webUsername + "'>";
+    contentHtml += "      </div>";
+    contentHtml += "      <div class=\"mb-3\">";
+    contentHtml += "        <label for=\"web_password\" class=\"form-label\">授权密码</label>";
+    contentHtml += "        <input type=\"password\" class=\"form-control\" id=\"web_password\" name=\"web_password\" value='" + webPassword + "'>";
+    contentHtml += "        <div class=\"form-text\">设置Web配置页面访问的用户名和密码</div>";
+    contentHtml += "      </div>";
+    
+    contentHtml += "      <div class='btn-group' role='group'>";
+    contentHtml += "        <button type=\"submit\" class=\"btn btn-primary\">保存配置</button>";
+    contentHtml += "        <form action='/restart' method='post' style='display:inline;'>";
+    contentHtml += "          <button type='submit' class='btn btn-warning'>重启设备</button>";
+    contentHtml += "        </form>";
+    contentHtml += "      </div>";
     contentHtml += "    </form>";
     contentHtml += "  </div>";
     contentHtml += "</div>";
@@ -950,12 +1313,22 @@ void WebConfigServer::handleNote() {
  * 处理配置请求（合并后的WiFi和时区配置）
  */
 void WebConfigServer::handleConfig() {
-    if (server.hasArg("ssid") && server.hasArg("password") && server.hasArg("timezone") && server.hasArg("theme")) {
+    if (server.hasArg("ssid") && server.hasArg("password") && server.hasArg("timezone")) {
         String ssid = server.arg("ssid");
         String password = server.arg("password");
         int timezone = server.arg("timezone").toInt();
-        String theme = server.arg("theme");
-        bool isLightTheme = (theme == "light");
+        
+        // 如果没有提供theme参数，使用当前配置的主题或默认值
+        bool isLightTheme = true; // 默认亮色主题
+        if (server.hasArg("theme")) {
+            String theme = server.arg("theme");
+            isLightTheme = (theme == "light");
+        } else {
+            ConfigManager* configManager = ConfigManager::getInstance();
+            if (configManager->isConfigLoaded()) {
+                isLightTheme = configManager->getDisplayTheme();
+            }
+        }
         
         // 使用ConfigManager保存所有配置
         ConfigManager* configManager = ConfigManager::getInstance();
@@ -986,7 +1359,12 @@ void WebConfigServer::handleConfig() {
                 successHtml += "  <div class='card-body'>";
                 successHtml += "    <h2 class='text-success'>配置保存成功!</h2>";
                 successHtml += "    <p>重启设备后生效。</p>";
-                successHtml += "    <a href='/' class='btn btn-success'>返回首页</a>";
+                successHtml += "    <div class='btn-group' role='group'>";
+                successHtml += "      <a href='/' class='btn btn-success'>返回首页</a>";
+                successHtml += "      <form action='/restart' method='post' style='display:inline;'>";
+                successHtml += "        <button type='submit' class='btn btn-warning'>重启设备</button>";
+                successHtml += "      </form>";
+                successHtml += "    </div>";
                 successHtml += "  </div>";
                 successHtml += "</div>";
                 
@@ -1204,6 +1582,51 @@ void WebConfigServer::readWiFiConfig(String& ssid, String& password) {
 }
 
 /**
+ * 扫描附近WiFi网络
+ */
+String WebConfigServer::scanWiFiNetworks() {
+    Serial.println("开始扫描WiFi网络...");
+    int numNetworks = WiFi.scanNetworks();
+    Serial.printf("发现 %d 个WiFi网络\n", numNetworks);
+    
+    String wifiListHtml = "";
+    if (numNetworks > 0) {
+        wifiListHtml += "<div class='mt-3'>";
+        wifiListHtml += "<h4 class='text-success'>附近的WiFi网络：</h4>";
+        wifiListHtml += "<div class='list-group'>";
+        
+        for (int i = 0; i < numNetworks; i++) {
+            // 获取信号强度（RSSI）
+            int32_t rssi = WiFi.RSSI(i);
+            String signalStrength = "弱"; // 默认弱信号
+            String signalClass = "text-danger"; // 红色表示弱信号
+            
+            if (rssi > -70) { // 强信号
+                signalStrength = "强"; 
+                signalClass = "text-success"; 
+            } else if (rssi > -85) { // 中等信号
+                signalStrength = "中"; 
+                signalClass = "text-warning"; 
+            }
+            
+            wifiListHtml += "<a href='#' onclick='document.getElementById(\"ssid\").value=\"" + WiFi.SSID(i) + "\";' class='list-group-item list-group-item-action'>";
+            wifiListHtml += "<div class='d-flex justify-content-between align-items-center'>";
+            wifiListHtml += "<span>" + WiFi.SSID(i) + "</span>";
+            wifiListHtml += "<span class='badge " + signalClass + "'>" + signalStrength + "</span>";
+            wifiListHtml += "</div>";
+            wifiListHtml += "</a>";
+        }
+        
+        wifiListHtml += "</div>";
+        wifiListHtml += "</div>";
+    } else {
+        wifiListHtml += "<div class='alert alert-info mt-3'>未发现WiFi网络</div>";
+    }
+    
+    return wifiListHtml;
+}
+
+/**
  * 保存WiFi配置
  */
 bool WebConfigServer::saveWiFiConfig(const String& ssid, const String& password) {
@@ -1285,6 +1708,290 @@ String WebConfigServer::urlEncode(const String& str) {
 }
 
 /**
+ * 验证URL是否有效并获取页面标题
+ * 返回标题（如果验证成功），否则返回空字符串
+ */
+String WebConfigServer::validateUrlAndGetTitle(const String& url) {
+    // 确保URL有协议前缀
+    String validUrl = url;
+    if (!validUrl.startsWith("http://") && !validUrl.startsWith("https://")) {
+        validUrl = "http://" + validUrl;
+    }
+    
+    // 发送HTTP请求获取页面内容
+    HTTPClient http;
+    String response = "";
+    
+    // 开始HTTP连接
+    http.begin(validUrl);
+    // 设置超时时间
+    http.setTimeout(10000);
+    // 设置User-Agent以避免被某些网站拒绝
+    http.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36");
+    
+    // 发送GET请求
+    int httpCode = http.GET();
+    
+    // 检查响应状态
+    if (httpCode > 0 && httpCode == HTTP_CODE_OK) {
+        // 请求成功，获取响应内容
+        response = http.getString();
+        
+        // 从HTML中提取标题
+        int titleStart = response.indexOf("<title>");
+        int titleEnd = response.indexOf("</title>");
+        
+        if (titleStart != -1 && titleEnd != -1) {
+            titleStart += 7; // 跳过 "<title>"
+            String title = response.substring(titleStart, titleEnd);
+            
+            // 清理标题中的HTML实体和多余空格
+            title.replace("&lt;", "<");
+            title.replace("&gt;", ">");
+            title.replace("&quot;", "\"");
+            title.replace("&amp;", "&");
+            
+            // 移除多余的空格和换行符
+            title.trim();
+            
+            http.end();
+            return title;
+        }
+    }
+    
+    // 关闭连接
+    http.end();
+    return "";
+}
+
+/**
+ * 处理网址收藏页面请求
+ */
+void WebConfigServer::handleBookmarks() {
+    // 获取ConfigManager实例
+    ConfigManager* configManager = ConfigManager::getInstance();
+    
+    // 处理POST请求（增删改操作）
+    if (server.method() == HTTP_POST) {
+        String action = server.arg("action");
+        
+        if (action == "add") {
+            // 添加新的收藏网址
+            String url = server.arg("url");
+            
+            if (url.length() > 0) {
+                // 验证URL并获取标题
+                String title = validateUrlAndGetTitle(url);
+                
+                if (title.length() > 0) {
+                    // URL有效，添加到收藏
+                    if (configManager->addBookmark(title, url)) {
+                        server.sendHeader("Location", "/bookmarks?status=added");
+                        server.send(303);
+                        return;
+                    } else {
+                        server.sendHeader("Location", "/bookmarks?status=save_error");
+                        server.send(303);
+                        return;
+                    }
+                } else {
+                    server.sendHeader("Location", "/bookmarks?status=invalid_url");
+                    server.send(303);
+                    return;
+                }
+            } else {
+                server.sendHeader("Location", "/bookmarks?status=empty_url");
+                server.send(303);
+                return;
+            }
+        } else if (action == "delete") {
+            // 删除收藏网址
+            int index = server.arg("index").toInt();
+            
+            if (configManager->deleteBookmark(index)) {
+                server.sendHeader("Location", "/bookmarks?status=deleted");
+                server.send(303);
+                return;
+            } else {
+                server.sendHeader("Location", "/bookmarks?status=delete_error");
+                server.send(303);
+                return;
+            }
+        } else if (action == "update") {
+            // 更新收藏网址
+            int index = server.arg("index").toInt();
+            String title = server.arg("title");
+            String url = server.arg("url");
+            
+            if (url.length() > 0 && title.length() > 0) {
+                // 验证URL
+                String validatedTitle = validateUrlAndGetTitle(url);
+                
+                if (validatedTitle.length() > 0) {
+                    // URL有效，更新收藏
+                    if (configManager->updateBookmark(index, title, url)) {
+                        server.sendHeader("Location", "/bookmarks?status=updated");
+                        server.send(303);
+                        return;
+                    } else {
+                        server.sendHeader("Location", "/bookmarks?status=update_error");
+                        server.send(303);
+                        return;
+                    }
+                } else {
+                    server.sendHeader("Location", "/bookmarks?status=invalid_url_update");
+                    server.send(303);
+                    return;
+                }
+            } else {
+                server.sendHeader("Location", "/bookmarks?status=empty_fields");
+                server.send(303);
+                return;
+            }
+        }
+    }
+    
+    // 处理GET请求（显示页面）
+    String content = "";
+    
+    // 显示状态消息
+    String status = server.arg("status");
+    if (status == "added") {
+        content += "<div class='alert alert-success mb-4'>网址添加成功！</div>";
+    } else if (status == "deleted") {
+        content += "<div class='alert alert-success mb-4'>网址删除成功！</div>";
+    } else if (status == "updated") {
+        content += "<div class='alert alert-success mb-4'>网址更新成功！</div>";
+    } else if (status == "invalid_url") {
+        content += "<div class='alert alert-danger mb-4'>无效的网址，请检查URL是否正确！</div>";
+    } else if (status == "empty_url") {
+        content += "<div class='alert alert-warning mb-4'>网址不能为空！</div>";
+    } else if (status == "save_error" || status == "delete_error" || status == "update_error") {
+        content += "<div class='alert alert-danger mb-4'>操作失败，请重试！</div>";
+    } else if (status == "empty_fields") {
+        content += "<div class='alert alert-warning mb-4'>标题和网址不能为空！</div>";
+    } else if (status == "invalid_url_update") {
+        content += "<div class='alert alert-danger mb-4'>更新时URL无效，请检查URL是否正确！</div>";
+    }
+    
+    // 添加新网址的表单
+    content += "<div class='card mb-4'>";
+    content += "  <div class='card-header bg-primary text-white'>添加新网址</div>";
+    content += "  <div class='card-body'>";
+    content += "    <form action='/bookmarks' method='post'>";
+    content += "      <input type='hidden' name='action' value='add'>";
+    content += "      <div class='mb-3'>";
+    content += "        <label for='url' class='form-label'>网址</label>";
+    content += "        <input type='url' class='form-control' id='url' name='url' placeholder='请输入网址，如：https://www.example.com'>";
+    content += "        <div class='form-text'>系统将自动验证网址并获取页面标题</div>";
+    content += "      </div>";
+    content += "      <button type='submit' class='btn btn-primary'>添加网址</button>";
+    content += "    </form>";
+    content += "  </div>";
+    content += "</div>";
+    
+    // 显示收藏的网址列表
+    JsonArray bookmarks = configManager->getBookmarks();
+    content += "<div class='card mb-4'>";
+    content += "  <div class='card-header bg-secondary text-white'>收藏的网址</div>";
+    content += "  <div class='card-body'>";
+    
+    if (bookmarks.size() > 0) {
+        content += "<table class='table table-striped'>";
+        content += "  <thead>";
+        content += "    <tr>";
+        content += "      <th scope='col'>#</th>";
+        content += "      <th scope='col'>标题</th>";
+        content += "      <th scope='col'>网址</th>";
+        content += "      <th scope='col'>操作</th>";
+        content += "    </tr>";
+        content += "  </thead>";
+        content += "  <tbody>";
+        
+        // 遍历所有收藏的网址
+        for (int i = 0; i < bookmarks.size(); i++) {
+            JsonObject bookmark = bookmarks[i].as<JsonObject>();
+            String title = bookmark["title"].as<String>();
+            String url = bookmark["url"].as<String>();
+            
+            content += "    <tr>";
+            content += "      <th scope='row'>" + String(i + 1) + "</th>";
+            content += "      <td>" + title + "</td>";
+            content += "      <td><a href='" + url + "' target='_blank'>" + url + "</a></td>";
+            content += "      <td>";
+            content += "        <button type='button' class='btn btn-sm btn-primary' data-bs-toggle='modal' data-bs-target='#editModal' data-index='" + String(i) + "' data-title='" + title + "' data-url='" + url + "'>编辑</button>";
+            content += "        <form action='/bookmarks' method='post' style='display: inline;'>";
+            content += "          <input type='hidden' name='action' value='delete'>";
+            content += "          <input type='hidden' name='index' value='" + String(i) + "'>";
+            content += "          <button type='submit' class='btn btn-sm btn-danger'>删除</button>";
+            content += "        </form>";
+            content += "      </td>";
+            content += "    </tr>";
+        }
+        
+        content += "  </tbody>";
+        content += "</table>";
+    } else {
+        content += "    <div class='alert alert-info'>暂无收藏的网址</div>";
+    }
+    
+    content += "  </div>";
+    content += "</div>";
+    
+    // 编辑网址的模态框
+    content += "<!-- 编辑模态框 -->";
+    content += "<div class='modal fade' id='editModal' tabindex='-1' aria-labelledby='editModalLabel' aria-hidden='true'>";
+    content += "  <div class='modal-dialog'>";
+    content += "    <div class='modal-content'>";
+    content += "      <div class='modal-header'>";
+    content += "        <h5 class='modal-title' id='editModalLabel'>编辑网址</h5>";
+    content += "        <button type='button' class='btn-close' data-bs-dismiss='modal' aria-label='Close'></button>";
+    content += "      </div>";
+    content += "      <div class='modal-body'>";
+    content += "        <form action='/bookmarks' method='post'>";
+    content += "          <input type='hidden' name='action' value='update'>";
+    content += "          <input type='hidden' id='editIndex' name='index'>";
+    content += "          <div class='mb-3'>";
+    content += "            <label for='editTitle' class='form-label'>标题</label>";
+    content += "            <input type='text' class='form-control' id='editTitle' name='title'>";
+    content += "          </div>";
+    content += "          <div class='mb-3'>";
+    content += "            <label for='editUrl' class='form-label'>网址</label>";
+    content += "            <input type='url' class='form-control' id='editUrl' name='url'>";
+    content += "          </div>";
+    content += "          <button type='submit' class='btn btn-primary'>保存修改</button>";
+    content += "        </form>";
+    content += "      </div>";
+    content += "    </div>";
+    content += "  </div>";
+    content += "</div>";
+    
+    // JavaScript 来填充编辑模态框
+    content += "<script>";
+    content += "  var editModal = document.getElementById('editModal');";
+    content += "  editModal.addEventListener('show.bs.modal', function (event) {";
+    content += "    var button = event.relatedTarget;";
+    content += "    var index = button.getAttribute('data-index');";
+    content += "    var title = button.getAttribute('data-title');";
+    content += "    var url = button.getAttribute('data-url');";
+    content += "    ";
+    content += "    var modalTitle = editModal.querySelector('.modal-title');";
+    content += "    var editIndex = editModal.querySelector('#editIndex');";
+    content += "    var editTitle = editModal.querySelector('#editTitle');";
+    content += "    var editUrl = editModal.querySelector('#editUrl');";
+    content += "    ";
+    content += "    editIndex.value = index;";
+    content += "    editTitle.value = title;";
+    content += "    editUrl.value = url;";
+    content += "  });";
+    content += "</script>";
+    
+    // 生成完整页面并发送响应
+    String html = generateScreenPage("bookmarks", "网址收藏 - ESP32信息板", content);
+    server.send(200, "text/html", html);
+}
+
+/**
  * 处理单个JSON文件内容请求
  */
 void WebConfigServer::handleJsonFileContent() {
@@ -1296,29 +2003,7 @@ void WebConfigServer::handleJsonFileContent() {
         html += "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>查看JSON文件: " + fileName + "</title>";
         html += "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>";
         html += "</head><body>";
-        
-        // 统一的导航栏样式
-        html += "<div class=\"container\">";
-        html += "<nav class=\"navbar navbar-expand-lg navbar-dark bg-dark mb-4\">";
-        html += "  <div class=\"container-fluid\">";
-        html += "    <a class=\"navbar-brand\" href=\"/\">ESP32信息板</a>";
-        html += "    <button class=\"navbar-toggler\" type=\"button\" data-bs-toggle=\"collapse\" data-bs-target=\"#navbarNav\" aria-controls=\"navbarNav\" aria-expanded=\"false\" aria-label=\"Toggle navigation\">";
-        html += "      <span class=\"navbar-toggler-icon\"></span>";
-        html += "    </button>";
-        html += "    <div class=\"collapse navbar-collapse\" id=\"navbarNav\">";
-        html += "      <ul class=\"navbar-nav\">";
-        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/\">首页</a></li>";
-        html += "        <li class=\"nav-item\"><a class=\"nav-link active\" href=\"/json-files\">JSON文件</a></li>";
-        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-news\">新闻</a></li>";
-        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-calendar\">日历</a></li>";
-        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-notes\">留言板</a></li>";
-        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-iciba\">每日一句</a></li>";
-        html += "        <li class=\"nav-item\"><a class=\"nav-link\" href=\"/screen-astronauts\">太空站宇航员</a></li>";
-        html += "      </ul>";
-        html += "    </div>";
-        html += "  </div>";
-        html += "</nav>";
-        
+
         html += "<div class=\"card mb-4\">";
         html += "  <div class=\"card-header bg-info text-white\">JSON文件内容: " + fileName + "</div>";
         html += "  <div class=\"card-body\">";

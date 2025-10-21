@@ -3,11 +3,16 @@
 // 引入必要的头文件
 #include <Arduino.h>
 #include "lvgl.h"
+// 声明全局字体
+extern const lv_font_t lvgl_font_digital_24;
+extern const lv_font_t lvgl_font_digital_48;
+extern const lv_font_t lvgl_font_digital_108;
+extern const lv_font_t lvgl_font_digital_64;
 // 字体定义 - 方便后续更换字体
 extern const lv_font_t lvgl_font_yahei_16;
 #define GBFont &lvgl_font_yahei_16
 // 软件版本定义
-#define SOFTWARE_VERSION "0.1.4"
+#define SOFTWARE_VERSION "0.1.5"
 // NTP服务器配置
 #define NTP_SERVER     "ntp.aliyun.com"
 // 屏幕状态枚举

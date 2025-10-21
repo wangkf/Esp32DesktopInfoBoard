@@ -6,11 +6,6 @@
 #include "lv_conf_internal.h"
 #include "images/images.h"
 #include "ui_utils.h"
-// 声明全局字体
-extern const lv_font_t lvgl_font_digital_24;
-extern const lv_font_t lvgl_font_digital_48;
-extern const lv_font_t lvgl_font_digital_108;
-extern const lv_font_t lvgl_font_digital_64;
 // LVGL对象定义
 lv_obj_t* mao_select_label = nullptr;
 lv_obj_t* toxic_soul_label = nullptr;

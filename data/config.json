@@ -1,12 +1,24 @@
 {
   "wifi": {
-    "ssid": "wonder",
-    "password": "unclesam"
+    "ssid": "mywifi",
+    "password": "12345678"
   },
   "ntp": {
     "timezone": 8
   },
   "display": {
     "light_theme": false
-  }
+  },
+  "web_auth": {
+    "username": "admin",
+    "password": "admin"
+  },
+  "bookmarks": [
+    {
+    {
+      "title": "测试",
+      "url": "http://192.168.1.8"
+    }
+  ],
+  "device_name": "esp32-infoboard"
 }

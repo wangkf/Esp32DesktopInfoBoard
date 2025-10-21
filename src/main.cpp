@@ -28,8 +28,10 @@ bool webConfigMode = false;
 unsigned long webConfigStartTime = 0;
 const unsigned long WEB_CONFIG_TIMEOUT = 300000; // 5分钟超时
 
-// 声明全局字体
-extern const lv_font_t lvgl_font_digital_48;
+// ConfigManager实例
+ConfigManager* configManager = nullptr;
+
+
 
 // LED控制配置
 #define LED_CHANNEL    0       // LED通道
@@ -97,7 +99,8 @@ void initWiFiAndNTP() {
     Serial.print("IP地址: ");
     Serial.println(WiFi.localIP());
     // 初始化mDNS
-    if (!MDNS.begin("ESP32-InfoBoard")) {
+    String deviceName = configManager->getDeviceName();
+    if (!MDNS.begin(deviceName.c_str())) {
       Serial.println("Error setting up MDNS responder!");
     } else {
       Serial.println("mDNS responder started");
@@ -119,7 +122,8 @@ void initWiFiAndNTP() {
       char ipStr[20];
       WiFi.localIP().toString().toCharArray(ipStr, sizeof(ipStr));
       char combinedIpStr[90];
-      snprintf(combinedIpStr, sizeof(combinedIpStr), "\uF012 http://%s 或 http://ESP32-InfoBoard 登录更改留言板", ipStr);
+      String deviceName = configManager->getDeviceName();
+      snprintf(combinedIpStr, sizeof(combinedIpStr), "\uF012 http://%s 或 http://%s 登录更改留言板", ipStr, deviceName.c_str());
       TimeManager::getInstance()->setIpInfo(combinedIpStr, lv_color_hex(0x00FF00));
     }
   } else {
@@ -131,7 +135,8 @@ void initWiFiAndNTP() {
       WebConfigServer::getInstance()->start(true); // true表示使用AP模式
       Serial.println("已启动热点模式Web配置，请连接热点ESP32-InfoBoard，访问192.168.4.1");
       // 在AP模式下也初始化mDNS
-      if (!MDNS.begin("ESP32-InfoBoard")) {
+      String deviceName = configManager->getDeviceName();
+      if (!MDNS.begin(deviceName.c_str())) {
         Serial.println("Error setting up MDNS responder in AP mode!");
       } else {
         Serial.println("mDNS responder started in AP mode");
@@ -191,21 +196,27 @@ void handleButtonEvents() {
         bool useAPMode = (WiFi.status() != WL_CONNECTED);
         WebConfigServer::getInstance()->start(useAPMode);
         // 在Web配置模式下初始化mDNS
-        if (!MDNS.begin("ESP32-InfoBoard")) {
-          Serial.println("Error setting up MDNS responder in Web config mode!");
-        } else {
-          Serial.println("mDNS responder started in Web config mode");
-          // 添加HTTP服务
-          MDNS.addService("http", "tcp", 80);
-        }
-        
+      String deviceName = configManager->getDeviceName();
+      if (!MDNS.begin(deviceName.c_str())) {
+        Serial.println("Error setting up MDNS responder in Web config mode!");
+      } else {
+        Serial.println("mDNS responder started in Web config mode");
+        // 添加HTTP服务
+        MDNS.addService("http", "tcp", 80);
+      }
+          
+         // 使用已定义的deviceName变量
         if (useAPMode) {
-          Serial.println("已进入Web配置模式，请连接热点ESP32-InfoBoard，访问192.168.4.1或http://ESP32-InfoBoard.local");
+          Serial.print("已进入Web配置模式，请连接热点");
+          Serial.print(deviceName);
+          Serial.print("，访问192.168.4.1或http://");
+          Serial.println(deviceName + ".local");
           TimeManager::getInstance()->setStatusInfo("\uF013 192.168.4.1", lv_color_hex(0xFF0000), false);
         } else {
           Serial.print("已进入Web配置模式，请访问当前IP地址: ");
           Serial.println(WiFi.localIP());
-          Serial.println("或者通过mDNS访问: http://ESP32-InfoBoard.local");
+          Serial.print("或者通过mDNS访问: http://");
+          Serial.println(deviceName + ".local");
           char ipStr[20];
           WiFi.localIP().toString().toCharArray(ipStr, sizeof(ipStr));
           String statusText = "\uF012" + String(ipStr);
@@ -299,7 +310,8 @@ void initSystem() {
   initDisplayManager();
   
   // 初始化配置管理器（必须在WebConfigServer之前初始化）
-  if (!ConfigManager::getInstance()->init()) {
+  configManager = ConfigManager::getInstance();
+  if (!configManager->init()) {
     Serial.println("警告：配置管理器初始化失败");
   }
   
@@ -361,7 +373,8 @@ void displayTask(void *pvParameters) {
           if (WiFi.status() == WL_CONNECTED) {
             configInfo += "IP: " + WiFi.localIP().toString();
           } else {
-            configInfo += "请连接热点ESP32-InfoBoard\n";
+            String deviceName = configManager->getDeviceName();
+          configInfo += "请连接热点" + deviceName + "\n";
             configInfo += "访问: 192.168.4.1";
           }
           

@@ -18,6 +18,10 @@ private:
     bool isRunning; // 服务器运行状态
     const char* apSSID; // 热点名称
     const char* apPassword; // 热点密码
+    
+    // 认证相关方法
+    bool authenticate();
+    String base64Decode(String encoded);
 
     // 私有构造函数（单例模式）
     WebConfigServer();
@@ -30,6 +34,9 @@ private:
 
     // 处理JSON文件查看请求
     void handleJsonFile();
+    
+    // 处理网址收藏页面请求
+    void handleBookmarks();
 
     // 处理404错误
     void handleNotFound();
@@ -46,6 +53,9 @@ private:
     // 读取WiFi配置
     void readWiFiConfig(String& ssid, String& password);
 
+    // 扫描附近WiFi网络
+    String scanWiFiNetworks();
+    
     // 保存WiFi配置
     bool saveWiFiConfig(const String& ssid, const String& password);
     
@@ -60,6 +70,9 @@ private:
 
     // URL编码函数
     String urlEncode(const String& str);
+    
+    // 验证URL是否有效并获取页面标题
+    String validateUrlAndGetTitle(const String& url);
 
     // 处理单个JSON文件内容请求
     void handleJsonFileContent();

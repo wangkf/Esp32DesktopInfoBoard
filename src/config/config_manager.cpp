@@ -42,6 +42,16 @@ bool ConfigManager::init() {
             if (!error) {
                 configLoaded = true;
                 Serial.println("配置文件加载成功");
+                
+                // 确保配置中包含web_auth部分，如果没有则添加默认值
+                if (!configDoc.containsKey("web_auth")) {
+                    Serial.println("配置中缺少web_auth部分，添加默认值");
+                    JsonObject webAuthObj = configDoc.createNestedObject("web_auth");
+                    webAuthObj["username"] = "admin";
+                    webAuthObj["password"] = "admin";
+                    // 保存更新后的配置
+                    saveConfigToFile();
+                }
             } else {
                 Serial.print("配置文件解析失败: ");
                 Serial.println(error.c_str());
@@ -57,6 +67,8 @@ bool ConfigManager::init() {
         configDoc["wifi"]["password"] = "12345678";
         configDoc["ntp"]["timezone"] = 8;
         configDoc["display"]["light_theme"] = false; // 默认使用黑夜主题
+        configDoc["web_auth"]["username"] = "admin";
+        configDoc["web_auth"]["password"] = "admin";
         configLoaded = true;
         
         // 保存默认配置到文件
@@ -162,6 +174,70 @@ bool ConfigManager::getDisplayTheme() {
     return false; // 默认返回黑夜主题
 }
 
+// 获取Web授权配置
+bool ConfigManager::getWebAuthConfig(String& username, String& password) {
+    if (!configLoaded) {
+        return false;
+    }
+    
+    if (configDoc.containsKey("web_auth")) {
+        JsonObject webAuthObj = configDoc["web_auth"];
+        if (webAuthObj.containsKey("username")) {
+            username = webAuthObj["username"].as<String>();
+        }
+        if (webAuthObj.containsKey("password")) {
+            password = webAuthObj["password"].as<String>();
+        }
+        return true;
+    }
+    
+    return false;
+}
+
+// 设置Web授权配置
+bool ConfigManager::setWebAuthConfig(const String& username, const String& password) {
+    if (!configLoaded) {
+        return false;
+    }
+    
+    if (configDoc.containsKey("web_auth")) {
+        configDoc["web_auth"]["username"] = username;
+        configDoc["web_auth"]["password"] = password;
+    } else {
+        JsonObject webAuthObj = configDoc.createNestedObject("web_auth");
+        webAuthObj["username"] = username;
+        webAuthObj["password"] = password;
+    }
+    
+    return saveConfigToFile();
+}
+
+// 获取设备名称配置
+String ConfigManager::getDeviceName() {
+    if (!configLoaded) {
+        return "esp32-infoboard"; // 默认名称
+    }
+    
+    if (configDoc.containsKey("device_name")) {
+        return configDoc["device_name"].as<String>();
+    }
+    
+    // 如果不存在，设置默认值并保存
+    configDoc["device_name"] = "esp32-infoboard";
+    saveConfigToFile();
+    return "esp32-infoboard";
+}
+
+// 设置设备名称配置
+bool ConfigManager::setDeviceName(const String& deviceName) {
+    if (!configLoaded) {
+        return false;
+    }
+    
+    configDoc["device_name"] = deviceName;
+    return saveConfigToFile();
+}
+
 // 设置显示主题配置
 bool ConfigManager::setDisplayTheme(bool isLightTheme) {
     if (!configLoaded) {
@@ -181,4 +257,73 @@ bool ConfigManager::setDisplayTheme(bool isLightTheme) {
 // 检查配置是否已加载
 bool ConfigManager::isConfigLoaded() {
     return configLoaded;
+}
+
+// 获取所有收藏网址
+JsonArray ConfigManager::getBookmarks() {
+    if (!configLoaded) {
+        // 如果配置未加载，返回一个空数组
+        return JsonArray();
+    }
+    
+    // 如果bookmarks不存在，创建一个空数组
+    if (!configDoc.containsKey("bookmarks")) {
+        configDoc.createNestedArray("bookmarks");
+        saveConfigToFile();
+    }
+    
+    return configDoc["bookmarks"].as<JsonArray>();
+}
+
+// 添加收藏网址
+bool ConfigManager::addBookmark(const String& title, const String& url) {
+    if (!configLoaded) {
+        return false;
+    }
+    
+    // 确保bookmarks数组存在
+    if (!configDoc.containsKey("bookmarks")) {
+        configDoc.createNestedArray("bookmarks");
+    }
+    
+    // 添加新的书签对象
+    JsonArray bookmarks = configDoc["bookmarks"].as<JsonArray>();
+    JsonObject bookmark = bookmarks.createNestedObject();
+    bookmark["title"] = title;
+    bookmark["url"] = url;
+    
+    return saveConfigToFile();
+}
+
+// 删除收藏网址
+bool ConfigManager::deleteBookmark(int index) {
+    if (!configLoaded || !configDoc.containsKey("bookmarks")) {
+        return false;
+    }
+    
+    JsonArray bookmarks = configDoc["bookmarks"].as<JsonArray>();
+    if (index < 0 || index >= bookmarks.size()) {
+        return false; // 索引超出范围
+    }
+    
+    bookmarks.remove(index);
+    return saveConfigToFile();
+}
+
+// 更新收藏网址
+bool ConfigManager::updateBookmark(int index, const String& title, const String& url) {
+    if (!configLoaded || !configDoc.containsKey("bookmarks")) {
+        return false;
+    }
+    
+    JsonArray bookmarks = configDoc["bookmarks"].as<JsonArray>();
+    if (index < 0 || index >= bookmarks.size()) {
+        return false; // 索引超出范围
+    }
+    
+    JsonObject bookmark = bookmarks[index].as<JsonObject>();
+    bookmark["title"] = title;
+    bookmark["url"] = url;
+    
+    return saveConfigToFile();
 }

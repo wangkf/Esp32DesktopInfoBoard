@@ -9,95 +9,36 @@
 #include <time.h>
 #include "config/config_manager.h"
 #include "ui_utils.h"
-
 // 外部变量声明
 extern lv_obj_t* iciba_label;
 extern lv_obj_t* astronauts_label;
 extern lv_obj_t* news_label;
 extern lv_obj_t* calendar_label;
-
 // 全局变量
 extern const uint32_t screenWidth;
 extern const uint32_t screenHeight;
-/**
- * 从SPIFFS加载图片并使用LVGL显示
- * @param filename SPIFFS中的文件名
- * @param x 显示位置的X坐标
- * @param y 显示位置的Y坐标
- * @return 创建的LVGL图片对象指针
- */
-lv_obj_t* displayImageFromSPIFFS(const char* filename, int x, int y) {
-  Serial.println("尝试从SPIFFS加载图片: " + String(filename));
-  // 检查文件是否存在
-  if (!SPIFFS.exists(filename)) {
-    Serial.println("文件不存在: " + String(filename));
-    return NULL;
-  }
-  // 获取文件大小
-  File file = SPIFFS.open(filename, "r");
-  if (!file) {
-    Serial.println("打开文件失败: " + String(filename));
-    return NULL;
-  }
-  size_t fileSize = file.size();
-  file.close(); // 只需要检查文件是否存在和大小，不需要保持打开
-  Serial.printf("文件大小: %u 字节\n", fileSize);
-  // 创建LVGL图像对象
-  lv_obj_t* img = lv_img_create(lv_scr_act());
-  if (!img) {
-    Serial.println("创建LVGL图像对象失败");
-    return NULL;
-  }
-  // 确保图像对象在最顶层显示
-  lv_obj_move_foreground(img);
-  // 使用LVGL内置的PNG解码器加载图片
-  // 为SPIFFS文件添加正确的文件系统前缀
-  String lvglFilePath = "S:";
-  lvglFilePath += filename;
-  Serial.println("LVGL文件路径: " + lvglFilePath);
-  // 使用带文件系统前缀的路径设置图像源
-  lv_img_set_src(img, lvglFilePath.c_str());
-  Serial.println("已设置图像源");
-  // 设置图像位置
-  lv_obj_set_pos(img, x, y);
-  // 设置图像样式
-  lv_obj_set_style_border_width(img, 0, 0);
-  lv_obj_set_style_radius(img, 0, 0);
-  lv_obj_set_style_bg_opa(img, 0, 0); // 透明背景
-  // 显式刷新LVGL显示
-  lv_refr_now(lv_disp_get_default());
-  lv_task_handler();
-  Serial.println("图片显示成功，已刷新显示");
-  return img;
-}
-
 //*** 显示日历信息
 void displayCalendar() {
   Serial.print("显示日历信息");
-  
   // 检查calendar_label是否已创建和有效
   if (!calendar_label || !lv_obj_is_valid(calendar_label)) {
     Serial.println("calendar_label无效，无法显示日历");
     return;
   }
-  
   // 获取当前时间
   time_t now;
   struct tm timeinfo;
   time(&now);
   localtime_r(&now, &timeinfo);
-  
   // 获取当前年份、月份和日期
   int year = timeinfo.tm_year + 1900;
   int month = timeinfo.tm_mon + 1;
   int day = timeinfo.tm_mday;
-  
   // 计算当月第一天是星期几
   struct tm firstDayOfMonth = timeinfo;
   firstDayOfMonth.tm_mday = 1;
   mktime(&firstDayOfMonth);
   int firstDayWeekday = firstDayOfMonth.tm_wday;
-  
   // 计算当月有多少天
   struct tm lastDayOfMonth = timeinfo;
   lastDayOfMonth.tm_mday = 1;
@@ -106,24 +47,18 @@ void displayCalendar() {
   lastDayOfMonth.tm_mday = 0; // 设置为0，回退到上个月的最后一天
   mktime(&lastDayOfMonth);
   int daysInMonth = lastDayOfMonth.tm_mday;
-  
   // 构建日历文本
   String calendarText = "";
-  
   // 添加月份标题
   calendarText += String(year) + "年" + String(month) + "月日历\n\n";
-  
   // 添加星期标题
   calendarText += "日  一  二  三  四  五  六\n";
-  
   // 添加日期，确保当前日期突出显示
   int dayCount = 1;
-  
   // 填充第一行的空格
   for (int i = 0; i < firstDayWeekday; i++) {
     calendarText += "     "; // 五个空格
   }
-  
   // 填充日期
   for (int i = firstDayWeekday; i < 7; i++) {
     if (dayCount == day) {
@@ -142,7 +77,6 @@ void displayCalendar() {
     dayCount++;
   }
   calendarText += "\n";
-  
   // 填充剩余的日期
   while (dayCount <= daysInMonth) {
     for (int i = 0; i < 7 && dayCount <= daysInMonth; i++) {
@@ -163,14 +97,6 @@ void displayCalendar() {
     }
     calendarText += "\n";
   }
-  
-  // 获取主题配置
-  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
-  uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
-  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000;
-  // 更新标签颜色
-  lv_obj_set_style_text_color(calendar_label, lv_color_hex(textColor), 0);
-  
   // 更新标签文本
   lv_label_set_text(calendar_label, calendarText.c_str());
   
@@ -265,16 +191,9 @@ void displayIcibaDataFromFile() {
     } else {
       icibaText += "暂无翻译";
     }
-  
-  // 获取主题配置
-  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
-  uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
-  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000;
+ 
   // 更新金山词霸标签
   if (iciba_label && lv_obj_is_valid(iciba_label)) {
-    // 更新标签颜色
-    lv_obj_set_style_text_color(iciba_label, lv_color_hex(textColor), 0);
-    
     lv_label_set_text(iciba_label, icibaText.c_str());
     lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
   }
@@ -318,15 +237,8 @@ void displayNoteDataFromFile() {
   } else {
     noteText += "暂无留言内容";
   }
-  // 获取主题配置
-  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
-  uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
-  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000;
   // 更新留言板标签
   if (note_label && lv_obj_is_valid(note_label)) {
-    // 更新标签颜色
-    lv_obj_set_style_text_color(note_label, lv_color_hex(textColor), 0);
-    
     lv_label_set_text(note_label, noteText.c_str());
     lv_obj_clear_flag(note_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
     lv_obj_move_foreground(note_label); // 确保标签显示在最上层
@@ -368,20 +280,9 @@ void displayAstronautsDataFromFile() {
         String craft = astronaut["craft"].as<String>();
         astronautsText += name + " - " + craft + "\n";
       }
-    }
-    
-    // 获取主题配置
-  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
-  uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
-  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000;
-    
+    }  
     // 更新宇航员标签
     if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
-      // 更新标签颜色和背景色
-      lv_obj_set_style_text_color(astronauts_label, lv_color_hex(textColor), 0);
-      lv_obj_set_style_bg_color(astronauts_label, lv_color_hex(bgColor), 0);
-      lv_obj_set_style_bg_opa(astronauts_label, 0, 0); // 半透明背景，这样不会完全覆盖底层图像
-      
       lv_label_set_text(astronauts_label, astronautsText.c_str());
       lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
       lv_obj_move_foreground(astronauts_label); // 确保标签显示在最上层
@@ -490,18 +391,9 @@ void displayNewsDataFromFile() {
       newsText += "暂无新闻内容";
     }
   }
-  // 获取主题配置
-  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
-  uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
-  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000; // 白天白色背景，黑夜黑色背景
-  
   // 更新新闻标签
   if (news_label && lv_obj_is_valid(news_label)) {
     // 更新标签颜色和背景色
-    lv_obj_set_style_text_color(news_label, lv_color_hex(textColor), 0);
-    lv_obj_set_style_bg_color(news_label, lv_color_hex(bgColor), 0);
-    lv_obj_set_style_bg_opa(news_label, 0, 0); // 完全不透明背景
-    
     lv_label_set_text(news_label, newsText.c_str());
     lv_obj_clear_flag(news_label, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(news_label);

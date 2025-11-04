@@ -167,7 +167,7 @@ void displayCalendar() {
   // 获取主题配置
   bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
   uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
-  
+  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000;
   // 更新标签颜色
   lv_obj_set_style_text_color(calendar_label, lv_color_hex(textColor), 0);
   
@@ -269,7 +269,7 @@ void displayIcibaDataFromFile() {
   // 获取主题配置
   bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
   uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
-  
+  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000;
   // 更新金山词霸标签
   if (iciba_label && lv_obj_is_valid(iciba_label)) {
     // 更新标签颜色
@@ -321,7 +321,7 @@ void displayNoteDataFromFile() {
   // 获取主题配置
   bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
   uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
-  
+  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000;
   // 更新留言板标签
   if (note_label && lv_obj_is_valid(note_label)) {
     // 更新标签颜色
@@ -373,7 +373,7 @@ void displayAstronautsDataFromFile() {
     // 获取主题配置
   bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
   uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
-  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000; // 白天白色背景，黑夜黑色背景
+  uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000;
     
     // 更新宇航员标签
     if (astronauts_label && lv_obj_is_valid(astronauts_label)) {

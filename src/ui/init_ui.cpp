@@ -32,7 +32,7 @@ lv_obj_t* note_label = nullptr;
 static lv_disp_draw_buf_t draw_buf;
 static lv_color_t buf[screenWidth * 10];
 static lv_color_t buf2[screenHeight * 10];
-  // TFT对象
+// TFT对象
 TFT_eSPI tft = TFT_eSPI(screenWidth, screenHeight);
 // LVGL显示回调函数
 void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
@@ -50,7 +50,6 @@ void initDisplayDriver() {
   tft.init();
   tft.setRotation(0); // 设置为正常方向（0度）
   // 获取主题配置
-
   tft.fillScreen(isLightTheme ? 0xFFFFFF : 0x000000);
   lv_init();  // 初始化LVGL
   // 配置显示缓冲区 - 使用双缓冲区
@@ -68,8 +67,6 @@ void initUI() {
   Serial.println("初始化UI元素...");
   // 初始化显示驱动
   initDisplayDriver();
-  // 获取主题配置 - 强制使用亮色主题进行测试
-  bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme(); // 强制使用亮色主题
   // 设置背景颜色
   lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(isLightTheme ? 0xFFFFFF : 0x000000), 0);
   uint32_t TextColor = isLightTheme ? 0x000000 : 0xFFFFFF;

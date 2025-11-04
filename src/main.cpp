@@ -6,13 +6,6 @@
 // 全局变量定义
 const char* ntpServer = NTP_SERVER;
 
-// LVGL对象声明
-extern lv_obj_t* mao_select_label;
-extern lv_obj_t* toxic_soul_label;
-extern lv_obj_t* soul_label;        // 禅语哲言标签
-extern lv_obj_t* iciba_label;
-extern lv_obj_t* astronauts_label;
-
 // 标记系统是否已经初始化
 bool systemInitialized = false;
 

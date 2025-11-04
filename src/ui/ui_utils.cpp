@@ -34,7 +34,7 @@ lv_obj_t* createLabel(const lv_font_t* font, lv_color_t textColor, int xOfs, int
 /**
  * 创建图像的通用函数实现
  */
-lv_obj_t* createImage(const void* src, int width, int height, int xOfs, int yOfs) {
+lv_obj_t* createImage(const void* src, int width, int height, int xOfs, int yOfs,lv_color_t bgColor) {
   lv_obj_t* img = lv_img_create(lv_scr_act()); 
   // 设置图像源
   lv_img_set_src(img, src);
@@ -42,6 +42,8 @@ lv_obj_t* createImage(const void* src, int width, int height, int xOfs, int yOfs
   lv_obj_set_size(img, width, height);
   // 设置对齐方式和偏移
   lv_obj_set_pos(img, xOfs, yOfs);
+  lv_obj_set_style_bg_color(img, bgColor, 0);
+  lv_obj_set_style_bg_opa(img, 0, 0);
   // 设置隐藏标志
   lv_obj_add_flag(img, LV_OBJ_FLAG_HIDDEN);
   return img;

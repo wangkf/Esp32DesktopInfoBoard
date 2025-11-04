@@ -8,6 +8,7 @@
 #include <lvgl.h>
 #include <time.h>
 #include "config/config_manager.h"
+#include "ui_utils.h"
 
 // 外部变量声明
 extern lv_obj_t* iciba_label;
@@ -68,47 +69,6 @@ lv_obj_t* displayImageFromSPIFFS(const char* filename, int x, int y) {
   lv_task_handler();
   Serial.println("图片显示成功，已刷新显示");
   return img;
-}
-
-/**
- * 创建并初始化通用标签
- * @param label 标签指针的引用
- * @param labelName 标签名称，用于调试
- */
-void createAndInitLabel(lv_obj_t* &label, const char* labelName) {
-  if (label == NULL || !lv_obj_is_valid(label)) {
-    if (label != NULL) {
-      // 确保旧标签被正确清理
-      lv_obj_del(label);
-    }
-    label = lv_label_create(lv_scr_act());
-    lv_obj_set_style_text_font(label, GBFont, 0);
-    
-    // 获取主题配置
-    bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
-    uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
-    
-    lv_obj_set_style_text_color(label, lv_color_hex(textColor), 0);
-    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, 0);
-    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP); // 设置自动换行
-    lv_obj_set_width(label, screenWidth - 40); // 设置标签宽度
-    lv_obj_set_height(label, screenHeight - 120); // 固定高度
-    lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 100); // 顶部居中对齐，顶部离屏幕顶部100px
-    
-    // 不添加背景和边框效果
-    lv_obj_set_style_bg_opa(label, 0, 0); // 完全透明背景
-    lv_obj_set_style_border_width(label, 0, 0); // 无边框
-    lv_obj_set_style_radius(label, 0, 0); // 无圆角
-    lv_obj_set_style_pad_all(label, 10, 0); // 内边距
-    
-    Serial.println("创建或重新创建了" + String(labelName));
-  }
-  else {
-    // 更新标签颜色
-    bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
-    uint32_t textColor = isLightTheme ? 0x000000 : 0xFFFFFF; // 白天黑色文字，黑夜白色文字
-    lv_obj_set_style_text_color(label, lv_color_hex(textColor), 0);
-  }
 }
 
 //*** 显示日历信息
@@ -376,10 +336,7 @@ void displayNoteDataFromFile() {
 void displayAstronautsDataFromFile() {
   Serial.println("从文件显示宇航员数据");
   
-  // 确保astronauts_label已创建和初始化
-  createAndInitLabel(astronauts_label, "astronauts_label");
-  
-  JsonDocument doc;
+ JsonDocument doc;
   if (!readJsonFromFile("/astronauts.json", doc)) {
     if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
       lv_label_set_text(astronauts_label, "无法读取宇航员数据文件");
@@ -423,7 +380,7 @@ void displayAstronautsDataFromFile() {
       // 更新标签颜色和背景色
       lv_obj_set_style_text_color(astronauts_label, lv_color_hex(textColor), 0);
       lv_obj_set_style_bg_color(astronauts_label, lv_color_hex(bgColor), 0);
-      lv_obj_set_style_bg_opa(astronauts_label, 255, 0); // 完全不透明背景
+      lv_obj_set_style_bg_opa(astronauts_label, 0, 0); // 半透明背景，这样不会完全覆盖底层图像
       
       lv_label_set_text(astronauts_label, astronautsText.c_str());
       lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
@@ -543,7 +500,7 @@ void displayNewsDataFromFile() {
     // 更新标签颜色和背景色
     lv_obj_set_style_text_color(news_label, lv_color_hex(textColor), 0);
     lv_obj_set_style_bg_color(news_label, lv_color_hex(bgColor), 0);
-    lv_obj_set_style_bg_opa(news_label, 255, 0); // 完全不透明背景
+    lv_obj_set_style_bg_opa(news_label, 0, 0); // 完全不透明背景
     
     lv_label_set_text(news_label, newsText.c_str());
     lv_obj_clear_flag(news_label, LV_OBJ_FLAG_HIDDEN);

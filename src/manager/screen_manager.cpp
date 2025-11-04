@@ -391,6 +391,8 @@ void ScreenManager::showAstronautsScreen() {
     if (astronauts_img && lv_obj_is_valid(astronauts_img)) {
         // 显示底部图像
         lv_obj_clear_flag(astronauts_img, LV_OBJ_FLAG_HIDDEN);
+        // 确保图片在适当层级显示
+        lv_obj_move_foreground(astronauts_img);
     }
     // 确保宇航员标签可见
     if (astronauts_label) {

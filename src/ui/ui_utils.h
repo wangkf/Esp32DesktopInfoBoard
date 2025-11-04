@@ -23,7 +23,7 @@ lv_obj_t* createLabel(const lv_font_t* font, lv_color_t textColor, int xOfs, int
 
 /**
  * 创建图像的通用函数
- * 
+ *
  * @param src 图像源
  * @param height 高度
  * @param xOfs X轴偏移
@@ -31,6 +31,6 @@ lv_obj_t* createLabel(const lv_font_t* font, lv_color_t textColor, int xOfs, int
  * @param hidden 是否默认隐藏（默认true）
  * @return 创建的图像对象指针
  */
-lv_obj_t* createImage(const void* src, int width, int height, int xOfs, int yOfs);
+lv_obj_t* createImage(const void* src, int width, int height, int xOfs, int yOfs,lv_color_t bgColor);
 
 #endif // UI_UTILS_H

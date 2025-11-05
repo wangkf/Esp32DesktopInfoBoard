@@ -23,4 +23,5 @@ extern lv_obj_t* calendar_img;
 extern lv_obj_t* today_date_label;
 // 函数声明
 void initUI();
+void reapplyTheme();
 #endif // INIT_UI_H

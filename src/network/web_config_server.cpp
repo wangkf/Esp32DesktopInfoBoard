@@ -3,6 +3,7 @@
 #include "config/config.h"
 #include "config/config_manager.h"
 #include "images/images.h"
+#include "ui/init_ui.h"
 // ESP32系统信息相关头文件
 #include <esp_system.h>
 #include <esp_partition.h>
@@ -94,6 +95,12 @@ void WebConfigServer::handleTheme() {
             bool authSaved = configManager->setWebAuthConfig(webUsername, webPassword);
             bool deviceNameSaved = configManager->setDeviceName(deviceName);
             
+            // 如果主题保存成功，立即重新应用主题
+            if (themeSaved) {
+                // 重新应用主题设置
+                reapplyTheme();
+            }
+            
             if (themeSaved && authSaved && deviceNameSaved) {
                 Serial.println("主题和Web授权配置保存成功");
                 String successHtml = "";
@@ -117,9 +124,6 @@ void WebConfigServer::handleTheme() {
                 successHtml += "    <div class='alert alert-success'>主题和Web授权设置已成功保存！</div>";
                 successHtml += "    <div class='text-center mt-4 btn-group' role='group'>";
                 successHtml += "      <a href='/' class='btn btn-primary'>返回首页</a>";
-                successHtml += "      <form action='/restart' method='post' style='display:inline;'>";
-                successHtml += "        <button type='submit' class='btn btn-warning'>重启设备</button>";
-                successHtml += "      </form>";
                 successHtml += "    </div>";
                 successHtml += "  </div>";
                 successHtml += "</div>";
@@ -1373,9 +1377,6 @@ void WebConfigServer::handleConfig() {
                 successHtml += "    <p>重启设备后生效。</p>";
                 successHtml += "    <div class='btn-group' role='group'>";
                 successHtml += "      <a href='/' class='btn btn-success'>返回首页</a>";
-                successHtml += "      <form action='/restart' method='post' style='display:inline;'>";
-                successHtml += "        <button type='submit' class='btn btn-warning'>重启设备</button>";
-                successHtml += "      </form>";
                 successHtml += "    </div>";
                 successHtml += "  </div>";
                 successHtml += "</div>";

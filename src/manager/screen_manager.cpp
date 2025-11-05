@@ -395,6 +395,7 @@ void ScreenManager::showAstronautsScreen() {
         lv_obj_move_foreground(astronauts_img);
     }
     // 确保宇航员标签可见
+    extern lv_obj_t* astronauts_label;
     if (astronauts_label) {
         lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN);
         // 确保标签显示在最上层
@@ -492,4 +493,15 @@ if (soul_label && lv_obj_is_valid(soul_label)) {
     // 确保标签显示在最上层
     lv_obj_move_foreground(soul_label);
   }
+}
+
+//*** 设置配置模式图标状态
+void ScreenManager::setConfigIconStatus(bool isConfigMode) {
+    if (screen_symbol_label) {
+        if (isConfigMode) {
+            lv_label_set_text(screen_symbol_label, "⚙️"); // 配置模式图标
+        } else {
+            lv_label_set_text(screen_symbol_label, ""); // 普通模式下不显示图标
+        }
+    }
 }

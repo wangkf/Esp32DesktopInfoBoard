@@ -7,38 +7,9 @@
 #include "ui_utils.h"
 
 // 全局主题变量
-uint32_t TextColor, bgColor, chromaKey;
+uint32_t TextColor, bgColor, timeColor,dayColor,chromaKey;
 int themeId;
 
-// 初始化主题颜色
-void initThemeColors() {
-  // 获取主题ID (0=黑夜, 1=白天, 2=自动等)
-  themeId = ConfigManager::getInstance()->getDisplayTheme();
-  
-  // 根据主题ID确定颜色值
-  switch(themeId) {
-    case ConfigManager::THEME_LIGHT: // 白天主题 (1)
-      TextColor = 0x000000;      // 黑色文字
-      bgColor = 0xFFFFFF; // 白色背景
-      chromaKey = 0x00ee00;       // 黑色透明键
-      break;
-    case ConfigManager::THEME_DARK:  // 黑夜主题 (0)
-    default:
-      TextColor = 0xFFFFFF;      // 白色文字
-      bgColor = 0x000000; // 黑色背景
-      chromaKey = 0xFFeeFF;       // 白色透明键
-      break;
-    case ConfigManager::THEME_AUTO:  // 特殊主题 (2)
-      TextColor = 0x000000;      // 黑色文字
-      bgColor = 0xFFFFE0; // 淡黄色背景
-      chromaKey = 0x00ee00;       // 黑色透明键
-      break;
-  }
-}
-
-// 定义LVGL透明键色
-#define CONFIG_LV_COLOR_CHROMA_KEY chromaKey // 默认值，将在initThemeColors中实际设置
-#include "lv_conf_internal.h"
 // LVGL对象定义
 lv_obj_t* mao_select_label = nullptr;
 lv_obj_t* toxic_soul_label = nullptr;
@@ -55,6 +26,74 @@ lv_obj_t* calendar_label = nullptr;
 lv_obj_t* calendar_img = nullptr;
 lv_obj_t* today_date_label = nullptr;
 lv_obj_t* note_label = nullptr;
+
+// 初始化主题颜色
+void initThemeColors() {
+  // 获取主题ID (0=黑夜, 1=白天, 2=自动等)
+  themeId = ConfigManager::getInstance()->getDisplayTheme();
+  
+  // 根据主题ID确定颜色值
+  switch(themeId) {
+    case ConfigManager::THEME_LIGHT: // 白天主题 (1)
+      TextColor = 0x000000;      // 黑色文字
+      bgColor = 0xFFFFFF; // 白色背景
+      timeColor = 0x999999;
+      dayColor = 0xFF0000;
+      chromaKey = 0x000000;
+      break;
+    case ConfigManager::THEME_DARK:  // 黑夜主题 (0)
+    default:
+      TextColor = 0xFFFFFF;      // 白色文字
+      bgColor = 0x000000; // 黑色背景
+      timeColor = 0x00FF00;
+      dayColor = 0x00FF00;
+      chromaKey = 0xFFFFFF;
+      break;
+    case ConfigManager::THEME_AUTO:  // 特殊主题 (2)
+      TextColor = 0x000FFF;      // 蓝色文字
+      bgColor = 0xCCCCE0; // 淡黄色背景
+      timeColor = 0xBBBBBB;
+      dayColor = 0x0000FF;
+      chromaKey = 0x00ee00;
+      break;
+  }
+}
+
+// 定义LVGL透明键色
+#define CONFIG_LV_COLOR_CHROMA_KEY chromaKey // 默认值，将在initThemeColors中实际设置
+#include "lv_conf_internal.h"
+
+// 重新应用主题设置
+void reapplyTheme() {
+  Serial.println("重新应用主题设置...");
+  // 重新加载主题颜色
+  initThemeColors();
+  // 重新设置屏幕背景色
+  lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(bgColor), 0);
+  // 重新设置所有标签的文字颜色
+  if (news_label) lv_obj_set_style_text_color(news_label, lv_color_hex(TextColor), 0);
+  if (calendar_label) lv_obj_set_style_text_color(calendar_label, lv_color_hex(TextColor), 0);
+  if (today_date_label) lv_obj_set_style_text_color(today_date_label,lv_color_hex(dayColor), 0);
+  if (iciba_label) lv_obj_set_style_text_color(iciba_label, lv_color_hex(TextColor), 0);
+  if (astronauts_label) lv_obj_set_style_text_color(astronauts_label, lv_color_hex(TextColor), 0);
+  if (mao_select_label) lv_obj_set_style_text_color(mao_select_label, lv_color_hex(TextColor), 0);
+  if (toxic_soul_label) lv_obj_set_style_text_color(toxic_soul_label, lv_color_hex(TextColor), 0);
+  if (soul_label) lv_obj_set_style_text_color(soul_label, lv_color_hex(TextColor), 0);
+  if (note_label) lv_obj_set_style_text_color(note_label, lv_color_hex(TextColor), 0);
+  
+  // 重新设置所有图像的背景色
+  if (calendar_img) lv_obj_set_style_bg_color(calendar_img, lv_color_hex(bgColor), 0);
+  if (iciba_img) lv_obj_set_style_bg_color(iciba_img, lv_color_hex(bgColor), 0);
+  if (astronauts_img) lv_obj_set_style_bg_color(astronauts_img, lv_color_hex(bgColor), 0);
+  if (maoselect_img) lv_obj_set_style_bg_color(maoselect_img, lv_color_hex(bgColor), 0);
+  if (toxic_soul_img) lv_obj_set_style_bg_color(toxic_soul_img, lv_color_hex(bgColor), 0);
+  if (soul_img) lv_obj_set_style_bg_color(soul_img, lv_color_hex(bgColor), 0);
+  
+  // 刷新屏幕以应用更改
+  lv_obj_invalidate(lv_scr_act());
+  
+  Serial.println("主题设置重新应用完成");
+}
 // 从config.h中获取屏幕尺寸，不再重复定义；缓冲区设置 - 使用双缓冲区以提高显示性能
 static lv_disp_draw_buf_t draw_buf;
 static lv_color_t buf[screenWidth * 10];
@@ -76,8 +115,6 @@ void initDisplayDriver() {
   // 初始化显示屏
   tft.init();
   tft.setRotation(0); // 设置为正常方向（0度）
-  // 获取主题配置
-  //tft.fillScreen(isLightTheme ? 0xFFFFFF : 0x000000);
   lv_init();  // 初始化LVGL
   // 配置显示缓冲区 - 使用双缓冲区
   lv_disp_draw_buf_init(&draw_buf, buf, buf2, screenWidth * 10);
@@ -91,19 +128,10 @@ void initDisplayDriver() {
 }
 // 初始化UI元素
 void initUI() {
-  Serial.println("初始化UI元素...");
-  
-  // 初始化主题颜色
-  initThemeColors();
-  
-  // 初始化显示驱动
-  initDisplayDriver(); 
-  
-  // 绘制固定灰色背景（0,0,240,85）区域，不随主题变化
-  // 使用RGB565颜色值0x8080表示灰色
-  tft.fillRect(0, 0, 240, 85, 0x8080);
-  
-  lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(bgColor), 0);
+  Serial.println("初始化UI元素..."); 
+  initThemeColors();  // 初始化主题颜色
+  initDisplayDriver();   // 初始化显示驱动
+//lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(bgColor), 0);
   // 使用通用函数创建所有标签，createLabel函数会根据主题自动设置文字颜色
   news_label =       createLabel(GBFont,     lv_color_hex(TextColor),  0, 85,screenHeight-85);
   calendar_label =   createLabel(GBFont,     lv_color_hex(TextColor), 120, 240);

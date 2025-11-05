@@ -26,6 +26,13 @@ enum ScreenState {
   SOUL_SCREEN,
   NOTE_SCREEN
 };
+
+// 主题ID枚举
+enum ThemeID {
+  THEME_LIGHT = 0,    // 浅色主题
+  THEME_DARK = 1,     // 深色主题
+  THEME_SPECIAL = 2   // 特殊主题（预留，可根据需要扩展）
+};
 // 按钮事件类型
 enum ButtonEvent {
   NONE,

@@ -5,15 +5,39 @@
 #include "config/config_manager.h"
 #include "images/images.h"
 #include "ui_utils.h"
-bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
-#ifdef isLightTheme
-  #define CONFIG_LV_COLOR_CHROMA_KEY 0x000000
-#else
-  #define CONFIG_LV_COLOR_CHROMA_KEY 0xFFFFFF
-#endif
-// 设置背景颜色
-uint32_t TextColor = isLightTheme ? 0x000000 : 0xFFFFFF;
-uint32_t bgColor = isLightTheme ? 0xFFFFFF : 0x000000; 
+
+// 全局主题变量
+uint32_t TextColor, bgColor, chromaKey;
+int themeId;
+
+// 初始化主题颜色
+void initThemeColors() {
+  // 获取主题ID (0=黑夜, 1=白天, 2=自动等)
+  themeId = ConfigManager::getInstance()->getDisplayTheme();
+  
+  // 根据主题ID确定颜色值
+  switch(themeId) {
+    case ConfigManager::THEME_LIGHT: // 白天主题 (1)
+      TextColor = 0x000000;      // 黑色文字
+      bgColor = 0xFFFFFF; // 白色背景
+      chromaKey = 0x00ee00;       // 黑色透明键
+      break;
+    case ConfigManager::THEME_DARK:  // 黑夜主题 (0)
+    default:
+      TextColor = 0xFFFFFF;      // 白色文字
+      bgColor = 0x000000; // 黑色背景
+      chromaKey = 0xFFeeFF;       // 白色透明键
+      break;
+    case ConfigManager::THEME_AUTO:  // 特殊主题 (2)
+      TextColor = 0x000000;      // 黑色文字
+      bgColor = 0xFFFFE0; // 淡黄色背景
+      chromaKey = 0x00ee00;       // 黑色透明键
+      break;
+  }
+}
+
+// 定义LVGL透明键色
+#define CONFIG_LV_COLOR_CHROMA_KEY chromaKey // 默认值，将在initThemeColors中实际设置
 #include "lv_conf_internal.h"
 // LVGL对象定义
 lv_obj_t* mao_select_label = nullptr;
@@ -68,13 +92,22 @@ void initDisplayDriver() {
 // 初始化UI元素
 void initUI() {
   Serial.println("初始化UI元素...");
+  
+  // 初始化主题颜色
+  initThemeColors();
+  
   // 初始化显示驱动
   initDisplayDriver(); 
+  
+  // 绘制固定灰色背景（0,0,240,85）区域，不随主题变化
+  // 使用RGB565颜色值0x8080表示灰色
+  tft.fillRect(0, 0, 240, 85, 0x8080);
+  
   lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(bgColor), 0);
   // 使用通用函数创建所有标签，createLabel函数会根据主题自动设置文字颜色
   news_label =       createLabel(GBFont,     lv_color_hex(TextColor),  0, 85,screenHeight-85);
   calendar_label =   createLabel(GBFont,     lv_color_hex(TextColor), 120, 240);
-  today_date_label = createLabel(&lvgl_font_digital_108, lv_color_hex(isLightTheme ? 0x000000 : 0xFF0000),  0, 85, 0);
+  today_date_label = createLabel(&lvgl_font_digital_108, lv_color_hex(themeId == ConfigManager::THEME_LIGHT ? 0x000000 : 0xFF0000),  0, 85, 0);
   iciba_label =      createLabel(GBFont,     lv_color_hex(TextColor),  0, 85, screenHeight-85);
   astronauts_label = createLabel(GBFont,     lv_color_hex(TextColor),  0, 85,screenHeight-85);
   mao_select_label = createLabel(GBFont,     lv_color_hex(TextColor),  0, 220);  

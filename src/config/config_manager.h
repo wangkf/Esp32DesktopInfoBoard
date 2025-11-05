@@ -41,11 +41,16 @@ public:
     // 设置NTP时区配置
     bool setNTPServerTimezone(int timezone);
     
-    // 获取显示主题配置 (true: 白天主题, false: 黑夜主题)
-    bool getDisplayTheme();
+    // 主题常量定义
+    static const int THEME_DARK = 0;    // 黑夜主题
+    static const int THEME_LIGHT = 1;   // 白天主题
+    static const int THEME_AUTO = 2;    // 自动主题（示例，可扩展）
+    
+    // 获取显示主题配置 (返回主题ID: 0=黑夜, 1=白天, 2=自动等)
+    int getDisplayTheme();
     
     // 设置显示主题配置
-    bool setDisplayTheme(bool isLightTheme);
+    bool setDisplayTheme(int themeId);
     
     // 获取Web授权配置
     bool getWebAuthConfig(String& username, String& password);

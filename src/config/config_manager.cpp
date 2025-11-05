@@ -66,43 +66,45 @@ bool ConfigManager::init() {
         configDoc["wifi"]["ssid"] = "Mywifi";
         configDoc["wifi"]["password"] = "12345678";
         configDoc["ntp"]["timezone"] = 8;
-        configDoc["display"]["light_theme"] = false; // 默认使用黑夜主题
+        configDoc["display"]["theme_id"] = THEME_LIGHT; // 默认使用浅色主题 (0)
         configDoc["web_auth"]["username"] = "admin";
         configDoc["web_auth"]["password"] = "admin";
-        configLoaded = true;
-        
+        configLoaded = true;   
         // 保存默认配置到文件
         saveConfigToFile();
-    }
-    
+    }   
     return configLoaded;
 }
-
 // 保存配置到文件
 bool ConfigManager::saveConfigToFile() {
+    Serial.printf("信息：正在保存配置文件到 %s\n", configFile);
+    
     File file = SPIFFS.open(configFile, "w");
     if (!file) {
-        Serial.println("无法打开配置文件进行写入");
+        Serial.printf("错误：无法打开配置文件 %s 进行写入，检查文件系统权限或空间\n", configFile);
         return false;
     }
     
-    if (serializeJsonPretty(configDoc, file) == 0) {
-        Serial.println("配置序列化失败");
+    // 尝试序列化JSON到文件
+    size_t bytesWritten = serializeJsonPretty(configDoc, file);
+    if (bytesWritten == 0) {
+        Serial.println("错误：配置序列化失败，可能是JSON数据结构错误");
         file.close();
         return false;
     }
     
+    // 确保所有数据都写入
+    file.flush();
+    
     file.close();
-    Serial.println("配置文件保存成功");
+    Serial.printf("信息：配置文件保存成功，写入 %u 字节数据\n", bytesWritten);
     return true;
 }
-
 // 读取WiFi配置
 bool ConfigManager::getWiFiConfig(String& ssid, String& password) {
     if (!configLoaded) {
         return false;
-    }
-    
+    }   
     if (configDoc.containsKey("wifi")) {
         JsonObject wifiObj = configDoc["wifi"];
         if (wifiObj.containsKey("ssid")) {
@@ -113,65 +115,82 @@ bool ConfigManager::getWiFiConfig(String& ssid, String& password) {
         }
         return true;
     }
-    
     return false;
 }
-
 // 保存WiFi配置
 bool ConfigManager::setWiFiConfig(const String& ssid, const String& password) {
     if (!configLoaded) {
         return false;
-    }
-    
+    }   
     configDoc["wifi"]["ssid"] = ssid;
     configDoc["wifi"]["password"] = password;
-    
     return saveConfigToFile();
 }
-
 // 读取NTP时区配置
 int ConfigManager::getNTPServerTimezone() {
     if (!configLoaded || !configDoc.containsKey("ntp")) {
         return 8; // 默认东八区
-    }
-    
+    }   
     JsonObject ntpObj = configDoc["ntp"];
     if (ntpObj.containsKey("timezone")) {
         return ntpObj["timezone"].as<int>();
     }
-    
     return 8; // 默认东八区
 }
-
-
 // 设置NTP时区配置
 bool ConfigManager::setNTPServerTimezone(int timezone) {
     if (!configLoaded) {
         return false;
-    }
-    
+    }   
     if (configDoc.containsKey("ntp")) {
         configDoc["ntp"]["timezone"] = timezone;
     } else {
         JsonObject ntpObj = configDoc.createNestedObject("ntp");
         ntpObj["timezone"] = timezone;
     }
-    
     return saveConfigToFile();
 }
-
-// 获取显示主题配置 (true: 白天主题, false: 黑夜主题)
-bool ConfigManager::getDisplayTheme() {
-    if (!configLoaded || !configDoc.containsKey("display")) {
-        return false; // 默认返回黑夜主题
+// 获取显示主题配置
+int ConfigManager::getDisplayTheme() {
+    if (!configLoaded) {
+        Serial.println("信息：配置未加载，使用默认浅色主题");
+        return THEME_LIGHT;
     }
     
-    JsonObject displayObj = configDoc["display"];
-    if (displayObj.containsKey("light_theme")) {
-        return displayObj["light_theme"].as<bool>();
+    if (configDoc.containsKey("display") && configDoc["display"].containsKey("theme_id")) {
+        int themeId = configDoc["display"]["theme_id"].as<int>();
+        // 验证主题ID是否在有效范围内
+        if (themeId >= 0 && themeId <= 2) {
+            String themeName;
+            switch(themeId) {
+                case THEME_LIGHT: themeName = "浅色主题";
+                    break;
+                case THEME_DARK: themeName = "深色主题";
+                    break;
+                case THEME_AUTO: themeName = "特殊主题"; // 注意：这里的名称可以根据需要修改
+                    break;
+                default: themeName = "未知主题";
+            }
+            Serial.printf("信息：获取到主题配置 %s (ID: %d)\n", themeName.c_str(), themeId);
+            return themeId;
+        }
+        Serial.printf("警告：发现无效的主题ID: %d，使用默认浅色主题\n", themeId);
+        return THEME_LIGHT;
     }
     
-    return false; // 默认返回黑夜主题
+    // 向后兼容：处理旧的light_theme配置
+    if (configDoc.containsKey("display") && configDoc["display"].containsKey("light_theme")) {
+        bool lightTheme = configDoc["display"]["light_theme"].as<bool>();
+        int themeId = lightTheme ? THEME_LIGHT : THEME_DARK;
+        String themeName = lightTheme ? "浅色主题" : "深色主题";
+        Serial.printf("警告：检测到旧版light_theme配置，映射到 %s (ID: %d)，建议更新为新版theme_id格式\n", 
+                     themeName.c_str(), themeId);
+        return themeId;
+    }
+    
+    // 未找到任何主题配置，使用默认主题
+    Serial.println("信息：未找到主题配置，使用默认浅色主题");
+    return THEME_LIGHT;
 }
 
 // 获取Web授权配置
@@ -239,19 +258,59 @@ bool ConfigManager::setDeviceName(const String& deviceName) {
 }
 
 // 设置显示主题配置
-bool ConfigManager::setDisplayTheme(bool isLightTheme) {
+bool ConfigManager::setDisplayTheme(int themeId) {
     if (!configLoaded) {
+        Serial.println("错误：配置文件未加载，无法设置主题");
         return false;
     }
     
-    if (configDoc.containsKey("display")) {
-        configDoc["display"]["light_theme"] = isLightTheme;
-    } else {
-        JsonObject displayObj = configDoc.createNestedObject("display");
-        displayObj["light_theme"] = isLightTheme;
+    // 验证主题ID是否在有效范围内
+    if (themeId < 0 || themeId > 2) { // 当前支持0=浅色, 1=深色, 2=特殊
+        Serial.printf("错误：无效的主题ID %d，主题ID必须在0-2范围内\n", themeId);
+        return false;
     }
     
-    return saveConfigToFile();
+    String themeName;
+    switch(themeId) {
+        case THEME_LIGHT: themeName = "浅色主题";
+            break;
+        case THEME_DARK: themeName = "深色主题";
+            break;
+        case THEME_AUTO: themeName = "特殊主题"; // 注意：这里的名称可以根据需要修改
+            break;
+        default: themeName = "未知主题";
+    }
+    
+    if (configDoc.containsKey("display")) {
+        // 检查是否需要更新
+        int currentThemeId = configDoc["display"]["theme_id"].as<int>();
+        if (currentThemeId == themeId) {
+            Serial.printf("提示：主题已设置为 %s，无需更改\n", themeName.c_str());
+            return true;
+        }
+        
+        // 使用新的数字主题ID格式
+        configDoc["display"]["theme_id"] = themeId;
+        Serial.printf("信息：更新主题配置为 %s (ID: %d)\n", themeName.c_str(), themeId);
+        
+            if (configDoc["display"].containsKey("light_theme")) {
+                configDoc["display"].remove("light_theme");
+                Serial.println("信息：已移除旧的light_theme配置项，完全迁移到新版主题ID格式");
+            }
+        } else {
+            JsonObject displayObj = configDoc.createNestedObject("display");
+            displayObj["theme_id"] = themeId;
+            Serial.printf("信息：创建新的显示配置，主题设置为 %s (ID: %d)\n", themeName.c_str(), themeId);
+        }
+    
+    // 保存配置到文件
+    if (saveConfigToFile()) {
+        Serial.println("信息：主题配置保存成功");
+        return true;
+    } else {
+        Serial.println("错误：主题配置保存失败");
+        return false;
+    }
 }
 
 // 检查配置是否已加载

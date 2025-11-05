@@ -69,7 +69,16 @@ void WebConfigServer::handleRestart() {
 void WebConfigServer::handleTheme() {
     if (server.hasArg("theme")) {
         String theme = server.arg("theme");
-        bool isLightTheme = (theme == "light");
+        int themeId = ConfigManager::THEME_LIGHT; // 默认浅色主题
+        
+        // 根据主题参数设置对应的主题ID
+        if (theme == "dark") {
+            themeId = ConfigManager::THEME_DARK; // 深色主题
+        } else if (theme == "light") {
+            themeId = ConfigManager::THEME_LIGHT; // 浅色主题
+        } else if (theme == "special") {
+            themeId = ConfigManager::THEME_AUTO; // 自动主题
+        }
         
         // 获取Web授权参数
         String webUsername = server.hasArg("web_username") ? server.arg("web_username") : "admin";
@@ -81,7 +90,7 @@ void WebConfigServer::handleTheme() {
         // 使用ConfigManager保存配置
         ConfigManager* configManager = ConfigManager::getInstance();
         if (configManager->isConfigLoaded()) {
-            bool themeSaved = configManager->setDisplayTheme(isLightTheme);
+            bool themeSaved = configManager->setDisplayTheme(themeId);
             bool authSaved = configManager->setWebAuthConfig(webUsername, webPassword);
             bool deviceNameSaved = configManager->setDeviceName(deviceName);
             
@@ -1114,16 +1123,19 @@ void WebConfigServer::handleRoot() {
     contentHtml += "      <div class=\"mb-3\">";
     contentHtml += "        <label for=\"theme\" class=\"form-label\">选择显示主题</label>";
     contentHtml += "        <select class=\"form-control\" id=\"theme\" name=\"theme\">";
-    contentHtml += "          <option value=\"dark\"";
     // 获取主题配置
-    bool isLightTheme = ConfigManager::getInstance()->getDisplayTheme();
-if (!isLightTheme) contentHtml += " selected";
+    int themeId = ConfigManager::getInstance()->getDisplayTheme();
+    contentHtml += "          <option value=\"dark\"";
+    if (themeId == ConfigManager::THEME_DARK) contentHtml += " selected";
     contentHtml += ">黑夜主题</option>";
     contentHtml += "          <option value=\"light\"";
-    if (isLightTheme) contentHtml += " selected";
+    if (themeId == ConfigManager::THEME_LIGHT) contentHtml += " selected";
     contentHtml += ">白天主题</option>";
+    contentHtml += "          <option value=\"special\"";
+    if (themeId == ConfigManager::THEME_AUTO) contentHtml += " selected";
+    contentHtml += ">特殊主题</option>";
     contentHtml += "        </select>";
-    contentHtml += "        <div class=\"form-text\">白天主题：白底黑字；黑夜主题：黑底白字</div>";
+    contentHtml += "        <div class=\"form-text\">主题设置：0=黑夜(黑底白字)，1=白天(白底黑字)，2=特殊主题</div>";
     contentHtml += "      </div>";
     
     // 设备名称配置
@@ -2088,6 +2100,44 @@ const int SOUL_COUNT = 108;
 const int TOXIC_SOUL_COUNT = 108;
 
 /**
+ * 通用的随机内容处理函数
+ * 封装了随机内容页面的共同逻辑，包括内容展示、按钮生成等
+ */
+void WebConfigServer::handleRandomContent(const String& screenName, const String& screenTitle, 
+                                       const String& content, const String& buttonText, 
+                                       const String& buttonClass, const String& borderClass) {
+    // 生成内容区域
+    String contentHtml = "<div class='quote-box p-5 bg-light rounded border " + borderClass + " text-center'>";
+    
+    // 将换行符替换为HTML换行标签
+    String displayContent = content;
+    displayContent.replace("\n", "<br>");
+    contentHtml += "  <p class='fs-4 text-gray-800 mb-0'>" + displayContent + "</p>";
+    
+    contentHtml += "</div>";
+    contentHtml += "<div class='text-center mt-4'>";
+    contentHtml += "  <a href='/random-" + screenName + "' class='btn " + buttonClass + "'>" + buttonText + "</a>";
+    
+    // 根据当前屏幕类型，动态添加其他内容类型的链接
+    if (screenName != "taxicsoul") {
+        contentHtml += "  <a href='/random-taxicsoul' class='btn btn-outline-secondary ms-2'>查看乌鸡汤</a>";
+    }
+    if (screenName != "maoselect") {
+        contentHtml += "  <a href='/random-maoselect' class='btn btn-outline-secondary ms-2'>查看毛选</a>";
+    }
+    if (screenName != "soul") {
+        contentHtml += "  <a href='/random-soul' class='btn btn-outline-secondary ms-2'>查看禅语</a>";
+    }
+    
+    contentHtml += "</div>";
+    
+    // 生成完整页面
+    String html = generateScreenPage(screenName, screenTitle, contentHtml);
+    
+    server.send(200, "text/html", html);
+}
+
+/**
  * 处理随机乌鸡汤内容页面请求
  */
 void WebConfigServer::handleRandomToxicSoul() {
@@ -2098,24 +2148,8 @@ void WebConfigServer::handleRandomToxicSoul() {
     // 获取随机内容
     String content = ToxicSoul[randomIndex];
     
-    // 生成内容区域
-    String contentHtml = "<div class='quote-box p-5 bg-light rounded border border-warning text-center'>";
-    
-    // 将换行符替换为HTML换行标签
-    content.replace("\n", "<br>");
-    contentHtml += "  <p class='fs-4 text-gray-800 mb-0'>" + content + "</p>";
-    
-    contentHtml += "</div>";
-    contentHtml += "<div class='text-center mt-4'>";
-    contentHtml += "  <a href='/random-taxicsoul' class='btn btn-warning'>再看一条乌鸡汤</a>";
-    contentHtml += "  <a href='/random-maoselect' class='btn btn-outline-secondary ms-2'>查看毛选</a>";
-    contentHtml += "  <a href='/random-soul' class='btn btn-outline-secondary ms-2'>查看禅语</a>";
-    contentHtml += "</div>";
-    
-    // 生成完整页面
-    String html = generateScreenPage("taxicsoul", "随机乌鸡汤", contentHtml);
-    
-    server.send(200, "text/html", html);
+    // 使用通用函数处理随机内容页面
+    handleRandomContent("taxicsoul", "随机乌鸡汤", content, "再看一条乌鸡汤", "btn-warning", "border-warning");
 }
 
 /**
@@ -2129,24 +2163,8 @@ void WebConfigServer::handleRandomMaoSelect() {
     // 获取随机内容
     String content = MaoSelect[randomIndex];
     
-    // 生成内容区域
-    String contentHtml = "<div class='quote-box p-5 bg-light rounded border border-danger text-center'>";
-    
-    // 将换行符替换为HTML换行标签
-    content.replace("\n", "<br>");
-    contentHtml += "  <p class='fs-4 text-gray-800 mb-0'>" + content + "</p>";
-    
-    contentHtml += "</div>";
-    contentHtml += "<div class='text-center mt-4'>";
-    contentHtml += "  <a href='/random-maoselect' class='btn btn-danger'>再看一条毛选</a>";
-    contentHtml += "  <a href='/random-taxicsoul' class='btn btn-outline-secondary ms-2'>查看乌鸡汤</a>";
-    contentHtml += "  <a href='/random-soul' class='btn btn-outline-secondary ms-2'>查看禅语</a>";
-    contentHtml += "</div>";
-    
-    // 生成完整页面
-    String html = generateScreenPage("maoselect", "随机毛选内容", contentHtml);
-    
-    server.send(200, "text/html", html);
+    // 使用通用函数处理随机内容页面
+    handleRandomContent("maoselect", "随机毛选内容", content, "再看一条毛选", "btn-danger", "border-danger");
 }
 
 /**
@@ -2160,24 +2178,8 @@ void WebConfigServer::handleRandomSoul() {
     // 获取随机内容
     String content = Soul[randomIndex];
     
-    // 生成内容区域
-    String contentHtml = "<div class='quote-box p-5 bg-light rounded border border-info text-center'>";
-    
-    // 将换行符替换为HTML换行标签
-    content.replace("\n", "<br>");
-    contentHtml += "  <p class='fs-4 text-gray-800 mb-0'>" + content + "</p>";
-    
-    contentHtml += "</div>";
-    contentHtml += "<div class='text-center mt-4'>";
-    contentHtml += "  <a href='/random-soul' class='btn btn-info'>再看一条禅语</a>";
-    contentHtml += "  <a href='/random-taxicsoul' class='btn btn-outline-secondary ms-2'>查看乌鸡汤</a>";
-    contentHtml += "  <a href='/random-maoselect' class='btn btn-outline-secondary ms-2'>查看毛选</a>";
-    contentHtml += "</div>";
-    
-    // 生成完整页面
-    String html = generateScreenPage("soul", "随机禅语内容", contentHtml);
-    
-    server.send(200, "text/html", html);
+    // 使用通用函数处理随机内容页面
+    handleRandomContent("soul", "随机禅语内容", content, "再看一条禅语", "btn-info", "border-info");
 }
 
 

@@ -5,62 +5,47 @@
 
 // 全局变量定义
 const char* ntpServer = NTP_SERVER;
-
 // 标记系统是否已经初始化
 bool systemInitialized = false;
-
 // 自动换屏相关变量
 bool autoScreenChangeEnabled = true;
 unsigned long lastScreenChangeTime = 0;
-
 // 光线传感器相关变量
 unsigned long lastBrightnessUpdateTime = 0;
-
 // Web配置服务器相关变量
 bool webConfigMode = false;
 unsigned long webConfigStartTime = 0;
 const unsigned long WEB_CONFIG_TIMEOUT = 300000; // 5分钟超时
-
 // ConfigManager实例
 ConfigManager* configManager = nullptr;
-
-
-
 // LED控制配置
 #define LED_CHANNEL    0       // LED通道
 #define LED_FREQ       5000    // LED频率
 #define LED_RESOLUTION 8       // LED分辨率
-
 // 初始化硬件
 void initHardware() {
   Serial.begin(115200);
   Serial.println("初始化硬件...");
-  
   // 初始化PSRAM
   if (psramInit()) {
     Serial.println("PSRAM initialized");
   } else {
     Serial.println("PSRAM initialization failed");
   }
-  
   // 初始化SPIFFS
   if (!SPIFFS.begin(true)) {
     Serial.println("SPIFFS挂载失败");
   }
-  
   // 初始化光线传感器引脚
   pinMode(LIGHT_SENSOR_PIN, INPUT);
-  
   // 初始化PWM引脚用于亮度控制
   ledcSetup(LED_CHANNEL, LED_FREQ, LED_RESOLUTION);
   ledcAttachPin(SCREEN_BRIGHTNESS_PIN, LED_CHANNEL);
   ledcWrite(LED_CHANNEL, 255); // 默认最大亮度
 }
-
 // 初始化WiFi和NTP
 void initWiFiAndNTP() {
-  Serial.println("初始化WiFi和NTP...");
-  
+  Serial.println("初始化WiFi和NTP..."); 
   // 使用ConfigManager获取WiFi配置
   ConfigManager* configManager = ConfigManager::getInstance();
   String ssid = "";

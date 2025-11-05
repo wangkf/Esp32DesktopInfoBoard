@@ -118,6 +118,11 @@ public:
     void handleIcibaScreen();
     void handleAstronautsScreen();
     
+    // 通用的随机内容处理函数
+    void handleRandomContent(const String& screenName, const String& screenTitle, 
+                           const String& content, const String& buttonText, 
+                           const String& buttonClass, const String& borderClass);
+    
     // 处理随机内容页面请求
     void handleRandomToxicSoul();
     void handleRandomMaoSelect();

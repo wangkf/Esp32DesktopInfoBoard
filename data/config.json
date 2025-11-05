@@ -7,7 +7,7 @@
     "timezone": 8
   },
   "display": {
-    "light_theme": false
+    "theme_id": 0
   },
   "web_auth": {
     "username": "admin",

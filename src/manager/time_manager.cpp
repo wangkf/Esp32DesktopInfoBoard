@@ -4,10 +4,9 @@
 #include "lvgl.h"
 #include "esp_log.h"
 #include <TFT_eSPI.h>
+#include "ui/ui_manager.h"
 // 声明外部TFT对象
 extern TFT_eSPI tft;
-// 声明外部timeColor变量
-extern uint32_t timeColor;
 // 定义单例实例
 TimeManager* TimeManager::instance = nullptr;
 // 定义日志标签
@@ -50,7 +49,7 @@ void TimeManager::init() {
     if (!hour_minute_label) {
         hour_minute_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_text_font(hour_minute_label, &lvgl_font_digital_48, 0); // 48像素数字字体
-        lv_obj_set_style_text_color(hour_minute_label, lv_color_hex(timeColor), 0);
+        lv_obj_set_style_text_color(hour_minute_label, UIManager::getInstance()->getColorValue(COLOR_TIME), 0);
         lv_obj_align(hour_minute_label, LV_ALIGN_TOP_LEFT, 2, 20); // 位置：左上角对齐，x偏移5，y偏移30
         lv_label_set_text(hour_minute_label, "--:--");
         lv_label_set_long_mode(hour_minute_label, LV_LABEL_LONG_WRAP);
@@ -70,7 +69,7 @@ void TimeManager::init() {
     if (!date_label) {
         date_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_text_font(date_label, GBFont, 0); // 使用配置的中文字体
-        lv_obj_set_style_text_color(date_label, lv_color_hex(timeColor), 0);
+        lv_obj_set_style_text_color(date_label, UIManager::getInstance()->getColorValue(COLOR_TIME), 0);
         lv_obj_align(date_label, LV_ALIGN_TOP_LEFT, 0, 2); // 位置：顶部中间对齐，x偏移0，y偏移2
         lv_obj_set_width(date_label, 120); // 设置足够的宽度确保显示完整
         lv_label_set_text(date_label, "2023年01月01日");
@@ -81,7 +80,7 @@ void TimeManager::init() {
     if (!weekday_label) {
         weekday_label = lv_label_create(lv_scr_act());
         lv_obj_set_style_text_font(weekday_label, GBFont, 0); // 使用配置的中文字体
-        lv_obj_set_style_text_color(weekday_label, lv_color_hex(timeColor), 0);
+        lv_obj_set_style_text_color(weekday_label, UIManager::getInstance()->getColorValue(COLOR_TIME), 0);
         lv_obj_align(weekday_label, LV_ALIGN_TOP_LEFT, 120, 2); // 位置：顶部中间对齐，x偏移0，y偏移22
         lv_label_set_text(weekday_label, "星期日");
         lv_label_set_long_mode(weekday_label, LV_LABEL_LONG_WRAP);
@@ -260,4 +259,27 @@ void TimeManager::clearIpInfo() {
 void TimeManager::forceUpdateAll() {
     updateMinuteDisplay();
     updateSecondDisplay();
+}
+
+//*** 更新时间标签颜色
+void TimeManager::updateTimeLabelsColor() {
+    // 从UIManager获取当前主题的时间颜色
+    lv_color_t timeColor = UIManager::getInstance()->getColorValue(COLOR_TIME);
+    
+    // 更新日期标签颜色
+    if (date_label && lv_obj_is_valid(date_label)) {
+        lv_obj_set_style_text_color(date_label, timeColor, 0);
+    }
+    
+    // 更新星期标签颜色
+    if (weekday_label && lv_obj_is_valid(weekday_label)) {
+        lv_obj_set_style_text_color(weekday_label, timeColor, 0);
+    }
+    
+    // 更新时分钟标签颜色
+    if (hour_minute_label && lv_obj_is_valid(hour_minute_label)) {
+        lv_obj_set_style_text_color(hour_minute_label, timeColor, 0);
+    }
+    
+    Serial.println("时间标签颜色已更新");
 }

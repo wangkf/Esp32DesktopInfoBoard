@@ -20,10 +20,11 @@ public:
     bool setWiFiConfig(const String& ssid, const String& password);// 保存WiFi配置
     int getNTPServerTimezone();// 获取NTP时区配置
     bool setNTPServerTimezone(int timezone);// 设置NTP时区配置
-    // 主题常量定义
-    static const int THEME_DARK = 0;    // 黑夜主题
-    static const int THEME_LIGHT = 1;   // 白天主题
-    static const int THEME_AUTO = 2;    // 自动主题（示例，可扩展）
+    
+    // 主题类型定义
+    static const int THEME_DARK = 0;    // 0 - 黑夜主题
+    static const int THEME_LIGHT = 1;  // 1 - 白天主题
+    static const int THEME_SPECIAL = 2; // 2 - 特殊主题
     int getDisplayTheme();// 获取显示主题配置 (返回主题ID: 0=黑夜, 1=白天, 2=自动等)
     bool setDisplayTheme(int themeId);// 设置显示主题配置
     bool getWebAuthConfig(String& username, String& password);// 获取Web授权配置

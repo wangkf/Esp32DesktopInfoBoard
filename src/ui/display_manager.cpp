@@ -19,12 +19,13 @@ extern const uint32_t screenWidth;
 extern const uint32_t screenHeight;
 //*** 显示日历信息
 void displayCalendar() {
-  Serial.print("显示日历信息");
+  Serial.println("显示日历信息");
   // 检查calendar_label是否已创建和有效
   if (!calendar_label || !lv_obj_is_valid(calendar_label)) {
     Serial.println("calendar_label无效，无法显示日历");
     return;
   }
+  
   // 获取当前时间
   time_t now;
   struct tm timeinfo;
@@ -34,11 +35,13 @@ void displayCalendar() {
   int year = timeinfo.tm_year + 1900;
   int month = timeinfo.tm_mon + 1;
   int day = timeinfo.tm_mday;
+  
   // 计算当月第一天是星期几
   struct tm firstDayOfMonth = timeinfo;
   firstDayOfMonth.tm_mday = 1;
   mktime(&firstDayOfMonth);
   int firstDayWeekday = firstDayOfMonth.tm_wday;
+  
   // 计算当月有多少天
   struct tm lastDayOfMonth = timeinfo;
   lastDayOfMonth.tm_mday = 1;
@@ -47,18 +50,21 @@ void displayCalendar() {
   lastDayOfMonth.tm_mday = 0; // 设置为0，回退到上个月的最后一天
   mktime(&lastDayOfMonth);
   int daysInMonth = lastDayOfMonth.tm_mday;
+  
   // 构建日历文本
   String calendarText = "";
   // 添加月份标题
   calendarText += String(year) + "年" + String(month) + "月日历\n\n";
   // 添加星期标题
   calendarText += "日  一  二  三  四  五  六\n";
+  
   // 添加日期，确保当前日期突出显示
   int dayCount = 1;
   // 填充第一行的空格
   for (int i = 0; i < firstDayWeekday; i++) {
     calendarText += "     "; // 五个空格
   }
+  
   // 填充日期
   for (int i = firstDayWeekday; i < 7; i++) {
     if (dayCount == day) {
@@ -77,6 +83,7 @@ void displayCalendar() {
     dayCount++;
   }
   calendarText += "\n";
+  
   // 填充剩余的日期
   while (dayCount <= daysInMonth) {
     for (int i = 0; i < 7 && dayCount <= daysInMonth; i++) {
@@ -97,10 +104,30 @@ void displayCalendar() {
     }
     calendarText += "\n";
   }
+  
   // 更新标签文本
   lv_label_set_text(calendar_label, calendarText.c_str());
   
-  Serial.print("，日历显示完成");
+  // 强制显示日历标签
+  lv_obj_clear_flag(calendar_label, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_move_foreground(calendar_label);
+  
+  // 尝试通过UIManager显示日历相关元素
+  UIManager::getInstance()->showElements({"calendar_label", "calendar_img", "today_date_label"});
+  
+  // 设置today_date_label显示当前日期，使用两位数格式
+  String dayStr;
+  if (day < 10) {
+    dayStr = "0" + String(day);
+  } else {
+    dayStr = String(day);
+  }
+  lv_obj_t* todayDateLabel = UIManager::getInstance()->getElement("today_date_label");
+  if (todayDateLabel && lv_obj_is_valid(todayDateLabel)) {
+    lv_label_set_text(todayDateLabel, dayStr.c_str());
+  }
+  
+  Serial.println("日历信息显示完成");
 }
 /**
  * 从文件读取JSON数据
@@ -136,14 +163,16 @@ bool readJsonFromFile(const char* fileName, JsonDocument& doc) {
 void displayIcibaDataFromFile() {
   Serial.println("从文件显示金山词霸数据");
   
-  JsonDocument doc;
-  if (!readJsonFromFile("/iciba.json", doc)) {
-    if (iciba_label && lv_obj_is_valid(iciba_label)) {
-      lv_label_set_text(iciba_label, "无法读取金山词霸数据文件");
-      lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
-    }
+  // 确保iciba_label有效
+  if (!iciba_label || !lv_obj_is_valid(iciba_label)) {
+    Serial.println("iciba_label无效，无法显示每日一句");
     return;
   }
+  
+  JsonDocument doc;
+  if (!readJsonFromFile("/iciba.json", doc)) {
+    lv_label_set_text(iciba_label, "无法读取金山词霸数据文件");
+  } else {
 
   // 获取更新时间
   String updateTime = "";
@@ -196,6 +225,11 @@ void displayIcibaDataFromFile() {
   if (iciba_label && lv_obj_is_valid(iciba_label)) {
     lv_label_set_text(iciba_label, icibaText.c_str());
     lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
+    lv_obj_move_foreground(iciba_label); // 确保标签显示在最上层
+  }
+  
+  // 尝试通过UIManager显示每日一句相关元素
+  UIManager::getInstance()->showElements({"iciba_label", "iciba_img"});
   }
 }
 //*** 显示留言板内容
@@ -248,102 +282,103 @@ void displayNoteDataFromFile() {
 void displayAstronautsDataFromFile() {
   Serial.println("从文件显示宇航员数据");
   
- JsonDocument doc;
-  if (!readJsonFromFile("/astronauts.json", doc)) {
-    if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
-      lv_label_set_text(astronauts_label, "无法读取宇航员数据文件");
-      lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
-    }
-    return;
-  }
-
-  // 先检查doc是否包含"people"
-  if (!doc.containsKey("people")) {
-    if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
-      lv_label_set_text(astronauts_label, "JSON格式错误：缺少people字段");
-      lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
-    }
+  // 确保astronauts_label有效
+  if (!astronauts_label || !lv_obj_is_valid(astronauts_label)) {
+    Serial.println("astronauts_label无效，无法显示宇航员信息");
     return;
   }
   
-  // 检查"people"是否为JsonArray
-  if (doc["people"].is<JsonArray>()) {
-    JsonArray peopleArray = doc["people"].as<JsonArray>();
-    
-    // 构建宇航员显示文本
-    String astronautsText = "太空宇航员列表\n\n";
-    
-    // 遍历宇航员数组
-    for (JsonVariant astronaut : peopleArray) {
-      if (astronaut.containsKey("name") && astronaut.containsKey("craft")) {
-        String name = astronaut["name"].as<String>();
-        String craft = astronaut["craft"].as<String>();
-        astronautsText += name + " - " + craft + "\n";
+  JsonDocument doc;
+  if (!readJsonFromFile("/astronauts.json", doc)) {
+    Serial.println("无法读取宇航员数据文件");
+    lv_label_set_text(astronauts_label, "无法读取宇航员数据文件");
+  } else {
+    // 先检查doc是否包含"people"
+    if (!doc.containsKey("people")) {
+      Serial.println("JSON格式错误：缺少people字段");
+      lv_label_set_text(astronauts_label, "JSON格式错误：缺少people字段");
+    } else {
+      // 检查"people"是否为JsonArray
+      if (doc["people"].is<JsonArray>()) {
+        JsonArray peopleArray = doc["people"].as<JsonArray>();
+        Serial.println("检测到宇航员数组格式数据");
+        
+        // 构建宇航员显示文本
+        String astronautsText = "太空宇航员列表\n\n";
+        
+        // 遍历宇航员数组
+        for (JsonVariant astronaut : peopleArray) {
+          if (astronaut.containsKey("name") && astronaut.containsKey("craft")) {
+            String name = astronaut["name"].as<String>();
+            String craft = astronaut["craft"].as<String>();
+            astronautsText += name + " - " + craft + "\n";
+          }
+        }  
+        // 更新宇航员标签
+        lv_label_set_text(astronauts_label, astronautsText.c_str());
       }
-    }  
-    // 更新宇航员标签
-    if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
-      lv_label_set_text(astronauts_label, astronautsText.c_str());
-      lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
-      lv_obj_move_foreground(astronauts_label); // 确保标签显示在最上层
-    }
-  }
-  // 如果不是数组，检查是否为对象
-  else if (doc["people"].is<JsonObject>()) {
-    JsonObject result = doc["people"].as<JsonObject>();
-    
-    // 获取更新时间
-    String updateTime = "";
-    if (result.containsKey("last_updated")) {
-      updateTime = result["last_updated"].as<const char*>();
-    }
-    
-    // 构建宇航员显示文本，在第一行右边括号中显示更新时间
-    String astronautsText = "太空宇航员总数:" + String(result["number"].as<int>());
-    if (!updateTime.isEmpty()) {
-      astronautsText += " (" + updateTime + ")";
-    }
-    astronautsText += "\n";
-    
-    // 按航天器分组显示
-    std::map<String, std::vector<String>> astronautsByCraft;
-    
-    if (result.containsKey("people") && result["people"].is<JsonArray>()) {
-      JsonArray astronauts = result["people"].as<JsonArray>();
-      
-      for (JsonVariant astronaut : astronauts) {
-        if (astronaut.containsKey("name") && astronaut.containsKey("craft")) {
-          String name = astronaut["name"].as<String>();
-          String craft = astronaut["craft"].as<String>();
-          astronautsByCraft[craft].push_back(name);
+      // 如果不是数组，检查是否为对象
+      else if (doc["people"].is<JsonObject>()) {
+        JsonObject result = doc["people"].as<JsonObject>();
+        Serial.println("检测到宇航员对象格式数据");
+        
+        // 获取更新时间
+        String updateTime = "";
+        if (result.containsKey("last_updated")) {
+          updateTime = result["last_updated"].as<const char*>();
         }
-      }
-    }
-    
-    // 按照用户要求的格式显示：按航天器分组，每组内一行一个姓名
-    for (auto& pair : astronautsByCraft) {
-      astronautsText += pair.first + ":\n";
-      
-      // 每个宇航员姓名一行显示
-      for (size_t i = 0; i < pair.second.size(); i++) {
-        astronautsText += "- " + pair.second[i] + "\n";
-      }
-      astronautsText += "\n";
-    }
+        
+        // 构建宇航员显示文本，在第一行右边括号中显示更新时间
+        String astronautsText = "太空宇航员总数:" + String(result["number"].as<int>());
+        if (!updateTime.isEmpty()) {
+          astronautsText += " (" + updateTime + ")";
+        }
+        astronautsText += "\n";
+        
+        // 按航天器分组显示
+        std::map<String, std::vector<String>> astronautsByCraft;
+        
+        if (result.containsKey("people") && result["people"].is<JsonArray>()) {
+          JsonArray astronauts = result["people"].as<JsonArray>();
+          
+          for (JsonVariant astronaut : astronauts) {
+            if (astronaut.containsKey("name") && astronaut.containsKey("craft")) {
+              String name = astronaut["name"].as<String>();
+              String craft = astronaut["craft"].as<String>();
+              astronautsByCraft[craft].push_back(name);
+            }
+          }
+        }
+        
+        // 按照用户要求的格式显示：按航天器分组，每组内一行一个姓名
+        for (auto& pair : astronautsByCraft) {
+          astronautsText += pair.first + ":\n";
+          
+          // 每个宇航员姓名一行显示
+          for (size_t i = 0; i < pair.second.size(); i++) {
+            astronautsText += "- " + pair.second[i] + "\n";
+          }
+          astronautsText += "\n";
+        }
 
-    // 更新宇航员标签
-    if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
-      lv_label_set_text(astronauts_label, astronautsText.c_str());
-      lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
-      lv_obj_move_foreground(astronauts_label); // 确保标签显示在最上层
+        // 更新宇航员标签
+        lv_label_set_text(astronauts_label, astronautsText.c_str());
+      }
+      else {
+        Serial.println("JSON格式错误：people字段格式不正确");
+        lv_label_set_text(astronauts_label, "JSON格式错误：people字段格式不正确");
+      }
     }
   }
-  else {
-    if (astronauts_label && lv_obj_is_valid(astronauts_label)) {
-      lv_label_set_text(astronauts_label, "JSON格式错误：people字段格式不正确");
-      lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN); // 确保标签可见
-    }
-  }
+  
+  // 强制显示宇航员标签
+  lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_move_foreground(astronauts_label);
+  
+  // 尝试通过UIManager显示宇航员相关元素
+  UIManager::getInstance()->showElements({"astronauts_label", "astronauts_img"});
+  
+  Serial.println("宇航员数据显示完成");
 }
 //*** 显示新闻信息
 void displayNewsDataFromFile() {

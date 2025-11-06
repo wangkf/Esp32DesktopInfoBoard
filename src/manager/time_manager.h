@@ -80,6 +80,9 @@ public:
     
     // 强制更新所有时间显示
     void forceUpdateAll();
+    
+    // 更新时间标签颜色
+    void updateTimeLabelsColor();
 };
 
 #endif // TIME_MANAGER_H

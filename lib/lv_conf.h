@@ -390,7 +390,7 @@
 /*Optionally declare custom fonts here.
  *You can use these fonts as default font too and they will be available globally.
  *E.g. #define LV_FONT_CUSTOM_DECLARE   LV_FONT_DECLARE(my_font_1) LV_FONT_DECLARE(my_font_2)*/
-#define LV_FONT_CUSTOM_DECLARE   LV_FONT_DECLARE(lvgl_font_yahei_20) LV_FONT_DECLARE(lvgl_font_digital_48) LV_FONT_DECLARE(lvgl_font_digital_24)
+#define LV_FONT_CUSTOM_DECLARE   LV_FONT_DECLARE(lvgl_font_yahei_20) LV_FONT_DECLARE(lvgl_font_digital_48) LV_FONT_DECLARE(lvgl_font_digital_24) extern lv_font_t lvgl_font_digital_108;
 // 禁用不兼容的lvgl_font_song4_16字体
 #define LVGL_FONT_SONG4_16 0
 

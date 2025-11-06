@@ -6,11 +6,13 @@
 // 声明全局字体
 extern const lv_font_t lvgl_font_digital_24;
 extern const lv_font_t lvgl_font_digital_48;
-extern const lv_font_t lvgl_font_digital_108;
+extern lv_font_t lvgl_font_digital_108;
 extern const lv_font_t lvgl_font_digital_64;
 // 字体定义 - 方便后续更换字体
 extern const lv_font_t lvgl_font_yahei_16;
 #define GBFont &lvgl_font_yahei_16
+#define BIGFont &lvgl_font_digital_108
+
 // 软件版本定义
 #define SOFTWARE_VERSION "0.1.6"
 // NTP服务器配置
@@ -27,10 +29,10 @@ enum ScreenState {
   NOTE_SCREEN
 };
 
-// 主题ID枚举
+// 主题ID枚举 - 与ConfigManager中的主题常量保持一致
 enum ThemeID {
-  THEME_LIGHT = 0,    // 浅色主题
-  THEME_DARK = 1,     // 深色主题
+  THEME_DARK = 0,     // 深色主题
+  THEME_LIGHT = 1,    // 浅色主题
   THEME_SPECIAL = 2   // 特殊主题（预留，可根据需要扩展）
 };
 // 按钮事件类型

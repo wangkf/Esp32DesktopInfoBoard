@@ -167,7 +167,7 @@ int ConfigManager::getDisplayTheme() {
                     break;
                 case THEME_DARK: themeName = "深色主题";
                     break;
-                case THEME_AUTO: themeName = "特殊主题"; // 注意：这里的名称可以根据需要修改
+                case THEME_SPECIAL: themeName = "特殊主题"; // 注意：这里的名称可以根据需要修改
                     break;
                 default: themeName = "未知主题";
             }
@@ -276,7 +276,7 @@ bool ConfigManager::setDisplayTheme(int themeId) {
             break;
         case THEME_DARK: themeName = "深色主题";
             break;
-        case THEME_AUTO: themeName = "特殊主题"; // 注意：这里的名称可以根据需要修改
+        case THEME_SPECIAL: themeName = "特殊主题"; // 注意：这里的名称可以根据需要修改
             break;
         default: themeName = "未知主题";
     }

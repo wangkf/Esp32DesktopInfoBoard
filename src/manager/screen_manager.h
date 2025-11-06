@@ -2,6 +2,7 @@
 #define SCREEN_MANAGER_H
 #include <lvgl.h>
 #include "config/config.h"
+#include "ui/ui_manager.h"
 // 屏幕状态枚举已在config.h中定义
 /**
  * 屏幕管理器类：负责管理所有屏幕的切换和显示

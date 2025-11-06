@@ -54,13 +54,40 @@ src/
 │   ├── display_manager.cpp # 显示管理器实现
 │   ├── display_manager.h   # 显示管理器接口
 │   ├── init_ui.cpp         # UI初始化
-│   └── init_ui.h           # UI初始化接口
+│   ├── init_ui.h           # UI初始化接口
+│   ├── ui_manager.cpp      # UI管理器实现
+│   ├── ui_manager.h        # UI管理器接口
+│   ├── ui_utils.cpp        # UI工具函数实现文件
+│   └── ui_utils.h          # UI工具函数头文件
 ├── content/
 │   ├── maoselect.h         # 毛泽东选集内容
 │   ├── soul.h              # 禅语哲言内容
 │   └── toxicsoul.h         # 心灵鸡汤内容
+├── images/
+│   └── images.h            # 图像资源头文件
 └── includes.h              # 通用头文件包含
 ```
+
+### 代码和目录变动说明
+
+#### 核心功能模块更新
+
+1. **UI组件增强**
+   - 优化了`ui_manager.cpp`中的主题颜色配置，支持多种主题切换
+   - 增强了`display_manager.cpp`中的日历显示功能，实现了today_date_label的日期数字显示
+   - 更新了`init_ui.cpp`中的UI元素创建和注册逻辑，确保today_date_label正确初始化
+
+2. **时间和日期显示**
+   - `time_manager.cpp`中实现了完整的日期时间格式化和更新机制
+   - 增加了日期格式转换功能，支持在日历视图中以大字体显示当日日期（两位数格式）
+
+3. **配置管理优化**
+   - 改进了配置文件读写逻辑，增强了错误处理能力
+   - 增加了配置缓存机制，减少文件系统操作
+
+4. **目录结构优化**
+   - 保持了清晰的模块化结构，各模块职责明确
+   - 优化了头文件引用关系，减少循环依赖
 
 ## 文件及函数功能描述
 
@@ -277,6 +304,8 @@ src/
 ### 4. 日历显示功能
 
 显示当月日历，并在顶部居中以大字体突出显示当日日期，日期数字采用两位数格式（如01、02），提高视觉效果和信息清晰度。日历内容已优化显示对齐，确保日期第一行与其他内容正确对齐，并包含配套图片显示。
+
+具体实现：在display_manager.cpp的displayCalendar函数中，获取当前日期的天数，并格式化为两位数字符串，然后通过UIManager获取today_date_label对象并设置其文本内容。today_date_label使用大字体和主题颜色，在日历视图中处于显眼位置，确保日期显示正确且醒目。
 
 ### 5. ButtonManager功能
 

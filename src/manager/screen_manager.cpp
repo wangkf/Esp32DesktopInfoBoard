@@ -1,4 +1,5 @@
 #include "screen_manager.h"
+#include "ui/ui_manager.h"
 #include "network/net_http.h"
 #include "content/maoselect.h"
 #include "content/toxicsoul.h"
@@ -49,92 +50,19 @@ void ScreenManager::init() {
 }
 //*** 隐藏所有屏幕元素
 void ScreenManager::hideAllScreens() {
-    Serial.print("隐藏所有屏幕元素。");   
-    // 隐藏毛选标签和背景图像
-extern lv_obj_t* mao_select_label;
-extern lv_obj_t* maoselect_img;
-if (mao_select_label) {
-    lv_obj_add_flag(mao_select_label, LV_OBJ_FLAG_HIDDEN);
-}
-if (maoselect_img) {
-    lv_obj_add_flag(maoselect_img, LV_OBJ_FLAG_HIDDEN);
-}   
-    // 隐藏乌鸡汤标签和背景图像
-extern lv_obj_t* toxic_soul_label;
-extern lv_obj_t* toxic_soul_img;
-if (toxic_soul_label) {
-    lv_obj_add_flag(toxic_soul_label, LV_OBJ_FLAG_HIDDEN);
-}
-if (toxic_soul_img) {
-    lv_obj_add_flag(toxic_soul_img, LV_OBJ_FLAG_HIDDEN);
-}   
-    // 隐藏禅语哲言标签和背景图像
-extern lv_obj_t* soul_label;
-extern lv_obj_t* soul_img;
-if (soul_label) {
-    lv_obj_add_flag(soul_label, LV_OBJ_FLAG_HIDDEN);
-}
-if (soul_img) {
-    lv_obj_add_flag(soul_img, LV_OBJ_FLAG_HIDDEN);
-}   
-    // 隐藏金山词霸标签和图片
-extern lv_obj_t* iciba_label;
-extern lv_obj_t* iciba_img;
-if (iciba_label) {
-    lv_obj_add_flag(iciba_label, LV_OBJ_FLAG_HIDDEN);
-}
-if (iciba_img) {
-    lv_obj_add_flag(iciba_img, LV_OBJ_FLAG_HIDDEN);
-}   
-    // 隐藏宇航员信息标签和背景图像
-extern lv_obj_t* astronauts_label;
-extern lv_obj_t* astronauts_img;
-if (astronauts_label) {
-    lv_obj_add_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN);
-}
-if (astronauts_img) {
-    lv_obj_add_flag(astronauts_img, LV_OBJ_FLAG_HIDDEN);
-}   
-    // 隐藏新闻标签
-extern lv_obj_t* news_label;
-if (news_label) {
-    lv_obj_add_flag(news_label, LV_OBJ_FLAG_HIDDEN);
-}   
-    // 隐藏日历标签和背景图像
-extern lv_obj_t* calendar_label;
-extern lv_obj_t* calendar_img;
-if (calendar_label) {
-    lv_obj_add_flag(calendar_label, LV_OBJ_FLAG_HIDDEN);
-}
-if (calendar_img) {
-    lv_obj_add_flag(calendar_img, LV_OBJ_FLAG_HIDDEN);
-}
-    // 隐藏当日日期大字体标签
-extern lv_obj_t* today_date_label;
-if (today_date_label) {
-    lv_obj_add_flag(today_date_label, LV_OBJ_FLAG_HIDDEN);
-}
-    // 隐藏留言板标签
-    extern lv_obj_t* note_label;
-    if (note_label) {
-        lv_obj_add_flag(note_label, LV_OBJ_FLAG_HIDDEN);
-    }
+    Serial.println("使用UIManager批量隐藏所有屏幕元素");
+    // 使用UIManager进行批量隐藏操作，减少重复代码和提高性能
+    UIManager::getInstance()->hideAllElements();
 }
 
 //*** 显示留言板屏幕
 void ScreenManager::showNoteScreen() {
     Serial.println("切换到留言板屏幕");   
-    // 确保note_label被创建并显示
-extern lv_obj_t* note_label;
-if (note_label && lv_obj_is_valid(note_label)) {
     // 从文件加载并显示note内容
     ::displayNoteDataFromFile();
-    lv_obj_clear_flag(note_label, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_foreground(note_label);
-}   
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-      // 更新标题文本
+        // 更新标题文本
         lv_label_set_text(title_label, "\uF075 留言板");
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0xFFA500), 0); // 橙色
@@ -176,44 +104,15 @@ void ScreenManager::showCurrentScreen() {
 }
 //*** 显示日历屏幕
 void ScreenManager::showCalendarScreen() {
-    Serial.println("切换到日历屏幕：");
-    // 确保calendar_img被创建并显示在底部
-    extern lv_obj_t* calendar_img;
-    if (calendar_img && lv_obj_is_valid(calendar_img)) {
-        // 显示底部图像
-        lv_obj_clear_flag(calendar_img, LV_OBJ_FLAG_HIDDEN);
-    }
-    // 确保calendar_label被创建并显示
-    extern lv_obj_t* calendar_label;
-    if (calendar_label && lv_obj_is_valid(calendar_label)) {
-        lv_obj_clear_flag(calendar_label, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_foreground(calendar_label);
-    }
-    // 确保today_date_label被创建并显示
-    extern lv_obj_t* today_date_label;
-    if (today_date_label && lv_obj_is_valid(today_date_label)) {
-        // 获取当前日期
-        time_t now;
-        struct tm timeinfo;
-        time(&now);
-        localtime_r(&now, &timeinfo);
-        int day = timeinfo.tm_mday;
-        // 格式化日期为两位数字（如01, 02）
-        char dateStr[3];
-        sprintf(dateStr, "%02d", day);   
-        // 设置标签文本并显示
-        lv_label_set_text(today_date_label, dateStr);
-        lv_obj_clear_flag(today_date_label, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_foreground(today_date_label);
-    }
+    Serial.println("切换到日历屏幕");
     // 显示日历信息
-    ::displayCalendar();   
+    ::displayCalendar();
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-      // 更新标题文本
-        lv_label_set_text(title_label, "\uF073 日历");
+        // 更新标题文本
+        lv_label_set_text(title_label, "\uF073 今日日历");
         // 更新色块颜色
-        lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x800080), 0); // 紫色
+        lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x20B2AA), 0); // 海绿色
     }
 }
 //*** 切换到下一个屏幕
@@ -268,11 +167,59 @@ void ScreenManager::toggleScreen() {
 }
 //*** 直接切换到指定屏幕
 void ScreenManager::switchToScreen(ScreenState screenState) {
-    // 隐藏所有屏幕元素
+    Serial.printf("显示屏幕: %d\n", screenState);
+    
+    // 性能优化：使用UIManager批量隐藏所有元素
     hideAllScreens();
+    
     // 更新当前屏幕状态
-    currentScreen = screenState;  
-    // 显示当前屏幕
+    currentScreen = screenState;
+    
+    // 获取UIManager实例
+    UIManager* uiManager = UIManager::getInstance();
+    
+    // 根据屏幕状态显示相应的元素 - 使用批量操作优化性能
+    switch(screenState) {
+        case NEWS_SCREEN:
+            // 显示新闻屏幕元素
+            uiManager->showElement("news_label");
+            break;
+        case CALENDAR_SCREEN:
+            // 显示日历屏幕元素 - 批量显示减少事件触发
+            uiManager->showElements({"calendar_label", "calendar_img", "today_date_label"});
+            break;
+        case MAO_SELECT_SCREEN:
+            // 显示毛选屏幕元素
+            uiManager->showElements({"mao_select_label", "maoselect_img"});
+            break;
+        case TOXIC_SOUL_SCREEN:
+            // 显示乌鸡汤屏幕元素
+            uiManager->showElements({"toxic_soul_label", "toxic_soul_img"});
+            break;
+        case ICIBA_SCREEN:
+            // 显示词霸屏幕元素
+            uiManager->showElements({"iciba_label", "iciba_img"});
+            break;
+        case ASTRONAUTS_SCREEN:
+            // 显示宇航员屏幕元素
+            uiManager->showElements({"astronauts_label", "astronauts_img"});
+            break;
+        case SOUL_SCREEN:
+            // 显示禅语哲言屏幕元素
+            uiManager->showElements({"soul_label", "soul_img"});
+            break;
+        case NOTE_SCREEN:
+            // 显示留言板屏幕元素
+            uiManager->showElement("note_label");
+            break;
+        default:
+            Serial.println("未知屏幕状态，显示默认屏幕");
+            // 显示默认屏幕（例如新闻屏幕）
+            uiManager->showElement("news_label");
+            break;
+    }
+    
+    // 显示当前屏幕以执行数据加载等操作
     showCurrentScreen();
 }
 //*** 刷新当前屏幕数据
@@ -308,17 +255,11 @@ void ScreenManager::refreshCurrentScreenData() {
 //*** 显示新闻屏幕
 void ScreenManager::showNewsScreen() {
     Serial.println("切换到新闻屏幕：");
-    // 确保news_label被创建并显示
-    extern lv_obj_t* news_label;
-    if (news_label && lv_obj_is_valid(news_label)) {
-        lv_obj_clear_flag(news_label, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_foreground(news_label);
-    }
     // 从文件加载并显示新闻数据
     ::displayNewsDataFromFile();
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-      // 更新标题文本
+        // 更新标题文本
         lv_label_set_text(title_label, "\uF0AE 此刻头条");
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x0000FF), 0); // 蓝色
@@ -326,58 +267,38 @@ void ScreenManager::showNewsScreen() {
 }
 //*** 显示主席语录屏幕
 void ScreenManager::showMaoSelectScreen() {
-    Serial.println("切换到主席语录屏幕：");
-    // 显示随机的主席语录
-    showRandomMaoSelect();   
+    Serial.println("切换到主席语录屏幕");
+    // 显示随机一条主席语录
+    showRandomMaoSelect();
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-      // 更新标题文本
-        lv_label_set_text(title_label, "\uF024 毛主席语录");
+        // 更新标题文本
+        lv_label_set_text(title_label, "\uF013 主席语录");
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0xFF0000), 0); // 红色
     }
 }
 //*** 显示乌鸡汤屏幕
 void ScreenManager::showToxicSoulScreen() {
-    Serial.println("切换到乌鸡汤屏幕：");
-    // 显示随机的乌鸡汤
+    Serial.println("切换到乌鸡汤屏幕");
+    // 显示随机一条乌鸡汤
     showRandomToxicSoul();
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-      // 更新标题文本
-        lv_label_set_text(title_label, "\uF069 心灵鸡汤");
+        // 更新标题文本
+        lv_label_set_text(title_label, "\uF0C4 乌鸡汤");
         // 更新色块颜色
-        lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x008000), 0); // 绿色
+        lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0xFFD700), 0); // 金色
     }
 }
 //*** 显示金山词霸每日信息屏幕
 void ScreenManager::showIcibaScreen() {
     Serial.println("切换到金山词霸每日信息屏幕");
-    // 显示金山词霸标签和图片
-    extern lv_obj_t* iciba_label;
-    extern lv_obj_t* iciba_img;
-    if (iciba_label) {
-        Serial.println("显示iciba_label");
-        lv_obj_clear_flag(iciba_label, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_foreground(iciba_label);
-    }
-    if (iciba_img) {
-        Serial.println("显示iciba_img并设置层级");
-        lv_obj_clear_flag(iciba_img, LV_OBJ_FLAG_HIDDEN);
-        // 确保图片在顶层显示以便调试
-        lv_obj_move_foreground(iciba_img);
-    } 
-    // 暂停一会儿让用户能看到图片
-    delay(1000);
-    // 再把文字移到顶层
-    if (iciba_label) {
-        lv_obj_move_foreground(iciba_label);
-    }
-    // 首先尝试从文件显示金山词霸数据
+    // 从文件加载并显示金山词霸数据
     ::displayIcibaDataFromFile();
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-      // 更新标题文本
+        // 更新标题文本
         lv_label_set_text(title_label, "\uF0AC 每日一句");   
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0xFFA500), 0); // 橙色
@@ -386,26 +307,11 @@ void ScreenManager::showIcibaScreen() {
 //*** 显示宇航员信息屏幕
 void ScreenManager::showAstronautsScreen() {
     Serial.println("切换到宇航员信息屏幕：");
-    // 确保astronauts_img被创建并显示在底部
-    extern lv_obj_t* astronauts_img;
-    if (astronauts_img && lv_obj_is_valid(astronauts_img)) {
-        // 显示底部图像
-        lv_obj_clear_flag(astronauts_img, LV_OBJ_FLAG_HIDDEN);
-        // 确保图片在适当层级显示
-        lv_obj_move_foreground(astronauts_img);
-    }
-    // 确保宇航员标签可见
-    extern lv_obj_t* astronauts_label;
-    if (astronauts_label) {
-        lv_obj_clear_flag(astronauts_label, LV_OBJ_FLAG_HIDDEN);
-        // 确保标签显示在最上层
-        lv_obj_move_foreground(astronauts_label);
-    }
     // 从文件加载并显示宇航员数据
     ::displayAstronautsDataFromFile();
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
-      // 更新标题文本
+        // 更新标题文本
         lv_label_set_text(title_label, "\uF0C2 太空宇航员");
         // 更新色块颜色
         lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x4B0082), 0); // 靛蓝色
@@ -441,9 +347,9 @@ void ScreenManager::showSoulScreen() {
     // 更新屏幕标题和符号
     if (screen_symbol_label && screen_title_btn && title_label) {
       // 更新标题文本
-        lv_label_set_text(title_label, "\uF06D 禅语哲言");
+        lv_label_set_text(title_label, "\uF084 禅语哲言");
         // 更新色块颜色
-    lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x808000), 0); // 橄榄绿
+        lv_obj_set_style_bg_color(screen_title_btn, lv_color_hex(0x800080), 0); // 紫色
     }
 }
 //*** 显示随机的乌鸡汤

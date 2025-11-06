@@ -78,7 +78,7 @@ void WebConfigServer::handleTheme() {
         } else if (theme == "light") {
             themeId = ConfigManager::THEME_LIGHT; // 浅色主题
         } else if (theme == "special") {
-            themeId = ConfigManager::THEME_AUTO; // 自动主题
+            themeId = ConfigManager::THEME_SPECIAL; // 特殊主题
         }
         
         // 获取Web授权参数
@@ -1136,7 +1136,7 @@ void WebConfigServer::handleRoot() {
     if (themeId == ConfigManager::THEME_LIGHT) contentHtml += " selected";
     contentHtml += ">白天主题</option>";
     contentHtml += "          <option value=\"special\"";
-    if (themeId == ConfigManager::THEME_AUTO) contentHtml += " selected";
+    if (themeId == ConfigManager::THEME_SPECIAL) contentHtml += " selected";
     contentHtml += ">特殊主题</option>";
     contentHtml += "        </select>";
     contentHtml += "        <div class=\"form-text\">主题设置：0=黑夜(黑底白字)，1=白天(白底黑字)，2=特殊主题</div>";
